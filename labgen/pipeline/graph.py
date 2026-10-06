@@ -1,7 +1,7 @@
 from typing import TypedDict, Dict, Any
 from langgraph.graph import StateGraph, START, END
 from pipeline.llm import generate_circuit_design, generate_report_sections
-from pipeline.research import get_research_context
+from pipeline.research import get_hybrid_research_context
 
 class LabState(TypedDict):
     experiment_name: str
@@ -11,8 +11,8 @@ class LabState(TypedDict):
     report_sections: Dict[str, Any]
 
 def gather_research(state: LabState):
-    print("Graph: Gathering research context...")
-    context = get_research_context(state["experiment_name"])
+    print("Graph: Gathering research context (RAG+BM25 + web)...")
+    context = get_hybrid_research_context(state["experiment_name"], use_rag=True, use_web=True)
     return {"research_context": context}
 
 def design_circuit(state: LabState):

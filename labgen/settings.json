@@ -13,7 +13,9 @@
     "threshold": 0.5
   },
   "rag": {
-    "enabled": false,
+    "enabled": true,
+    "use_web": true,
+    "top_k": 5,
     "ocr_enabled": false
   },
   "scraper": {

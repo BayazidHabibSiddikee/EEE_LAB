@@ -9,7 +9,8 @@ import schemdraw
 import schemdraw.elements as elm
 from pipeline.assemble import load_config, render_latex, compile_pdf
 from pipeline.llm import generate_report_sections, generate_circuit_design
-from pipeline.research import get_research_context, save_research_context
+from pipeline.research import get_hybrid_research_context, save_research_context
+from pipeline.rag import build_rag_index
 from pipeline.verify import run_all_checks, write_report, extract_features
 
 def draw_triac_circuit(output_path):
@@ -150,6 +151,9 @@ def run_generation(args, settings):
 
     print(f"--- Running LabGen for: {args.name} ---")
 
+    print("Initializing RAG index...")
+    build_rag_index()
+
     print("Running LangGraph pipeline...")
     from pipeline.graph import run_pipeline
 
@@ -239,7 +243,7 @@ def run_generation(args, settings):
     print("Assembling LaTeX report...")
     config = load_config()
 
-    research_context = get_research_context(args.name)
+    research_context = get_hybrid_research_context(args.name, use_rag=True, use_web=True)
     save_research_context(run_dir, args.name, research_context)
 
     data_table_latex = _build_data_table_from_simulation(txt_out)
@@ -391,6 +395,19 @@ def run_verification(args, settings):
         out_path = os.path.join(os.path.dirname(args.input), "verification_report.json") if not args.input.endswith(".pdf") else args.input.replace(".pdf", "_verification.json")
         write_report(results, out_path)
 
+def run_index(args, settings):
+    from pipeline.rag import build_rag_index, get_rag_context
+    if args.rebuild:
+        print("Rebuilding RAG index...")
+        build_rag_index(force_rebuild=True)
+    else:
+        print("Loading/building RAG index...")
+        build_rag_index()
+    
+    if args.query:
+        print(f"\nQuery: {args.query}")
+        print(get_rag_context(args.query, top_k=args.top_k))
+
 def main():
     parser = argparse.ArgumentParser(description="LabGen - EEE Lab Report Generator & Verifier")
     subparsers = parser.add_subparsers(dest="command", required=True)
@@ -406,11 +423,24 @@ def main():
     verify_parser.add_argument("--data", help="Path to iv_data.txt for data cross-check")
     verify_parser.add_argument("--output", help="Output path for verification report")
 
+    index_parser = subparsers.add_parser("index", help="Manage RAG index")
+    index_parser.add_argument("--rebuild", action="store_true", help="Force rebuild index")
+    index_parser.add_argument("--query", help="Test query against index")
+    index_parser.add_argument("--top-k", type=int, default=5, help="Number of results")
+
     args = parser.parse_args()
 
     settings_path = os.path.join(os.path.dirname(__file__), "settings.json")
     with open(settings_path, "r") as f:
         settings = json.load(f)
+
+    # Commands that don't need API key
+    if args.command in ("index", "verify"):
+        if args.command == "index":
+            run_index(args, settings)
+        else:
+            run_verification(args, settings)
+        return
 
     api_key = settings.get("llm", {}).get("api_key")
     if not api_key or api_key == "YOUR_API_KEY":
@@ -423,8 +453,6 @@ def main():
 
     if args.command == "generate":
         run_generation(args, settings)
-    elif args.command == "verify":
-        run_verification(args, settings)
 
 if __name__ == "__main__":
     main()

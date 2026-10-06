@@ -37,8 +37,23 @@ LabGen is an automated pipeline for generating Electrical and Electronic Enginee
    python main.py "Study of Diode Characteristics" --circuit-prompt "A diode in series with a 1k resistor connected to a DC sweep voltage."
    ```
 
-## Folder Structure
+## Ecosystem & Folder Structure
+
+To unlock the full potential of LabGen (including PLC circuit generation and automated reference image cropping), it is recommended to set up the ecosystem side-by-side with symbolic links:
+
+```text
+EEE_LAB/
+├── labgen/                 # Your automated PDF pipeline (This repository)
+├── web-scraper/            # Symlinked -> /path/to/web-scraper
+└── FluidSim-Linux/         # Symlinked -> /path/to/FluidSim-Linux (Contains the MCP Server!)
+```
+
+### Optional but Powerful Extensions:
+1. **[FluidSim-Linux](https://github.com/BayazidHabibSiddikee/FluidSim-Linux)**: A Python-based clone of FluidSim. Includes a native MCP server, allowing the LLM to dynamically design and render PLC, pneumatic, and hydraulic circuits directly into your reports.
+2. **[Web-Scraper](https://github.com/BayazidHabibSiddikee/web-scraper)**: A highly powerful scraping suite powered by `camoufox`. Allows LabGen to automatically browse the web, screenshot reference diagrams (e.g., from datasheets or Wikipedia), crop them, and inject them into the Theory section.
+
+### LabGen Internal Structure:
 - `pipeline/`: Core logic (LLM, LangGraph, research, simulation).
 - `store/`: Place reference PDFs here for the optional OCR/RAG system.
 - `templates/`: Jinja2 templates for LaTeX generation.
-- `config.yaml` / `settings.json`: User configuration.
+- `settings.json`: User configuration (API keys, university data).

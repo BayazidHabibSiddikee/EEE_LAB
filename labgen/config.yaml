@@ -1,0 +1,14 @@
+university: "Rajshahi University of Engineering \\& Technology"
+department: "Department of Electrical and Electronic Engineering"
+course_code: "EEE 3102"
+course_name: "Digital Signal Processing Sessional" # we can override this
+student:
+  name: "John Doe"
+  roll: "1901000"
+  section: "A"
+  group: "1"
+teachers:
+  - name: "Dr. Jane Smith"
+    designation: "Professor"
+  - name: "Mr. Bob Brown"
+    designation: "Lecturer"

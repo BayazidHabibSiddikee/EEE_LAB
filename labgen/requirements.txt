@@ -1,0 +1,9 @@
+google-genai
+langchain
+langgraph
+langchain-google-genai
+schemdraw
+pandas
+matplotlib
+tectonic
+duckduckgo-search

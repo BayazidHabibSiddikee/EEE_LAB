@@ -1,0 +1,178 @@
+\documentclass[12pt,a4paper]{article}
+\usepackage[utf8]{inputenc}
+\usepackage{graphicx}
+\usepackage{geometry}
+\usepackage{amsmath}
+\usepackage{tgtermes} % Times New Roman equivalent for XeTeX
+\usepackage[font={small,it}]{caption} % size 11 (small is 11pt for 12pt document) and italic
+\usepackage{float}
+\usepackage{booktabs}
+\usepackage{hyperref}
+\usepackage{siunitx}
+\usepackage{sectsty} % For customizing section headings
+\sectionfont{\normalsize\bfseries} % Force section headings to be bold and 12pt
+
+\geometry{
+  a4paper,
+  left=25mm,
+  right=25mm,
+  top=25mm,
+  bottom=25mm,
+}
+
+\begin{document}
+
+% --- Cover Page ---
+\begin{titlepage}
+    % Use sans-serif or default for cover if desired, but we will let it be Times as per standard or we can use \sffamily
+    \sffamily
+    \centering
+    \vspace*{1cm}
+    
+    \Large \textbf{\MakeUppercase{ Rajshahi University of Engineering \& Technology }} \\
+    \vspace{0.5cm}
+    \large \textbf{\MakeUppercase{ Department of Electrical and Electronic Engineering }} \\
+    
+    \vspace{2.5cm}
+    \Large \textbf{LABORATORY REPORT} \\
+    \vspace{1cm}
+    
+    \begin{tabular}{ll}
+        \textbf{Course No:} & EEE 3102 \\
+        \textbf{Course Title:} & Digital Signal Processing Sessional \\
+    \end{tabular}
+    
+    \vspace{2cm}
+    
+    \textbf{Experiment No:} 02 \\
+    \vspace{0.5cm}
+    \textbf{Name of the Experiment:} \\
+    \Large \textbf{ Analyzing TRIAC Characteristics } \\
+    
+    \vspace{2.5cm}
+    
+    \begin{minipage}[t]{0.4\textwidth}
+        \begin{flushleft} \large
+            \emph{Submitted by:}\\
+            John Doe \\
+            Roll: 1901000 \\
+            Section: A, Group: 1
+        \end{flushleft}
+    \end{minipage}
+    \hfill
+    \begin{minipage}[t]{0.5\textwidth}
+        \begin{flushright} \large
+            \emph{Submitted to:} \\
+            
+            Dr. Jane Smith \\
+            Professor \\
+            \vspace{0.3cm}
+            
+            Mr. Bob Brown \\
+            Lecturer \\
+            
+            
+        \end{flushright}
+    \end{minipage}
+
+    \vfill
+    \textbf{Date of Performance:} October 07, 2026 \\
+    \textbf{Date of Submission:} October 14, 2026
+    
+\end{titlepage}
+
+% --- Main Content ---
+\setcounter{page}{1}
+\rmfamily % Ensure we are back to Times Roman
+\normalsize
+
+\begin{center}
+    \textbf{Experiment No:} 02 \\
+    \vspace{0.2cm}
+    \textbf{Name of the Experiment:} Analyzing TRIAC Characteristics
+\end{center}
+\vspace{0.5cm}
+
+\section{Introduction}
+A TRIAC (Triode for Alternating Current) is a three-terminal electronic component that conducts current in either direction when triggered. It is equivalent to two SCRs connected in inverse parallel with a common gate. The V-I characteristic shows forward and reverse blocking regions until the breakover voltage is reached, or a gate pulse is applied. A TRIAC (Triode for Alternating Current) is a three-terminal electronic component that conducts current in either direction when triggered. It is equivalent to two SCRs connected in inverse parallel with a common gate. The V-I characteristic shows forward and reverse blocking regions until the breakover voltage is reached, or a gate pulse is applied. A TRIAC (Triode for Alternating Current) is a three-terminal electronic component that conducts current in either direction when triggered. It is equivalent to two SCRs connected in inverse parallel with a common gate. The V-I characteristic shows forward and reverse blocking regions until the breakover voltage is reached, or a gate pulse is applied. A TRIAC (Triode for Alternating Current) is a three-terminal electronic component that conducts current in either direction when triggered. It is equivalent to two SCRs connected in inverse parallel with a common gate. The V-I characteristic shows forward and reverse blocking regions until the breakover voltage is reached, or a gate pulse is applied. A TRIAC (Triode for Alternating Current) is a three-terminal electronic component that conducts current in either direction when triggered. It is equivalent to two SCRs connected in inverse parallel with a common gate. The V-I characteristic shows forward and reverse blocking regions until the breakover voltage is reached, or a gate pulse is applied. A TRIAC (Triode for Alternating Current) is a three-terminal electronic component that conducts current in either direction when triggered. It is equivalent to two SCRs connected in inverse parallel with a common gate. The V-I characteristic shows forward and reverse blocking regions until the breakover voltage is reached, or a gate pulse is applied. A TRIAC (Triode for Alternating Current) is a three-terminal electronic component that conducts current in either direction when triggered. It is equivalent to two SCRs connected in inverse parallel with a common gate. The V-I characteristic shows forward and reverse blocking regions until the breakover voltage is reached, or a gate pulse is applied. 
+
+\section{Circuit Design}
+A variable DC voltage source is connected across the main terminals of the TRIAC through a current-limiting resistor. A gate current is provided to trigger the device. The voltage is swept from negative to positive values to observe both quadrants of operation.
+
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.8\textwidth]{/home/sword/Documents/EEE_LAB/labgen/runs/analyzing_triac_characteristics/figs/schematic.png}
+    \caption{Experimental Circuit Diagram}
+\end{figure}
+
+
+\section{Required Apparatus}
+\begin{itemize}
+
+    \item DC Power Supply (Variable) (Quantity: 1)
+
+    \item TRIAC (e.g., BT136) (Quantity: 1)
+
+    \item Resistor ($1 k\Omega$) (Quantity: 1)
+
+    \item Multimeter (Quantity: 2)
+
+\end{itemize}
+
+\section{Procedure}
+\begin{enumerate}
+
+    \item Connect the circuit as per the experimental circuit diagram.
+
+    \item Apply a constant gate current $I_G$.
+
+    \item Vary the supply voltage from -15V to 15V.
+
+    \item Record the voltage across the TRIAC ($V_{MT}$) and the current flowing through it ($I_{MT}$).
+
+    \item Plot the V-I characteristics.
+
+\end{enumerate}
+
+\section{Result}
+\begin{table}[H]
+    \centering
+    \begin{tabular}{cc}
+        \toprule
+        \textbf{$V_{MT}$ (V)} & \textbf{$I_{MT}$ (mA)} \\
+        \midrule
+        -1.5 & -50.0 \\
+        -0.8 & -0.1 \\
+        0.0 & 0.0 \\
+        0.8 & 0.1 \\
+        1.5 & 50.0 \\
+        \bottomrule
+    \end{tabular}
+    \caption{Simulated TRIAC Data (Sample Points)}
+\end{table}
+
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.8\textwidth]{/home/sword/Documents/EEE_LAB/labgen/runs/analyzing_triac_characteristics/figs/triac_iv.png}
+    \caption{ Simulated TRIAC V-I Curve }
+\end{figure}
+
+
+\section{Discussion}
+The simulation results show the symmetrical conduction characteristics of the TRIAC. The device triggered into conduction in both the first and third quadrants when the voltage exceeded the threshold. The simulation results show the symmetrical conduction characteristics of the TRIAC. The device triggered into conduction in both the first and third quadrants when the voltage exceeded the threshold. The simulation results show the symmetrical conduction characteristics of the TRIAC. The device triggered into conduction in both the first and third quadrants when the voltage exceeded the threshold. The simulation results show the symmetrical conduction characteristics of the TRIAC. The device triggered into conduction in both the first and third quadrants when the voltage exceeded the threshold. The simulation results show the symmetrical conduction characteristics of the TRIAC. The device triggered into conduction in both the first and third quadrants when the voltage exceeded the threshold. The simulation results show the symmetrical conduction characteristics of the TRIAC. The device triggered into conduction in both the first and third quadrants when the voltage exceeded the threshold. 
+
+\section{Conclusion}
+The V-I characteristics of the TRIAC were successfully analyzed, demonstrating its bidirectional current control capabilities. The graphical results matched the theoretical expectations for a thyristor operating in AC environments. The V-I characteristics of the TRIAC were successfully analyzed, demonstrating its bidirectional current control capabilities. The graphical results matched the theoretical expectations for a thyristor operating in AC environments. The V-I characteristics of the TRIAC were successfully analyzed, demonstrating its bidirectional current control capabilities. The graphical results matched the theoretical expectations for a thyristor operating in AC environments. The V-I characteristics of the TRIAC were successfully analyzed, demonstrating its bidirectional current control capabilities. The graphical results matched the theoretical expectations for a thyristor operating in AC environments. The V-I characteristics of the TRIAC were successfully analyzed, demonstrating its bidirectional current control capabilities. The graphical results matched the theoretical expectations for a thyristor operating in AC environments. The V-I characteristics of the TRIAC were successfully analyzed, demonstrating its bidirectional current control capabilities. The graphical results matched the theoretical expectations for a thyristor operating in AC environments. 
+
+\section{References}
+\begin{enumerate}
+
+    \item Boylestad, R. L., \& Nashelsky, L. (2012). Electronic Devices and Circuit Theory.
+
+    \item Ngspice Simulation Data.
+
+\end{enumerate}
+
+\end{document}

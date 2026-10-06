@@ -1,0 +1,22 @@
+TRIAC V-I Characteristics
+.include "/home/sword/Documents/EEE_LAB/labgen/models/triac.sub"
+
+* Circuit
+V1 1 0 DC 0
+R1 1 2 1k
+XT1 2 0 3 TRIAC
+
+* Gate drive (constant current or voltage)
+Ig 0 3 DC 5m
+
+* Analysis
+.dc V1 -15 15 0.1
+
+.control
+    run
+    * Plot V(2) vs current (which is I(V1))
+    let V_triac = V(2)
+    let I_triac = -I(V1)
+    wrdata runs/analyzing_triac_characteristics/iv_data.txt V_triac I_triac
+.endc
+.end

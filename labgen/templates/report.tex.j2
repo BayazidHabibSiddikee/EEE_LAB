@@ -1,0 +1,162 @@
+\documentclass[12pt,a4paper]{article}
+\usepackage[utf8]{inputenc}
+\usepackage{graphicx}
+\usepackage{geometry}
+\usepackage{amsmath}
+\usepackage{tgtermes} % Times New Roman equivalent for XeTeX
+\usepackage[font={small,it}]{caption} % size 11 (small is 11pt for 12pt document) and italic
+\usepackage{float}
+\usepackage{booktabs}
+\usepackage{hyperref}
+\usepackage{siunitx}
+\usepackage{sectsty} % For customizing section headings
+% In a 12pt document, \normalsize is 12pt. \bfseries makes it bold.
+\sectionfont{\fontsize{12}{14}\bfseries\selectfont} 
+
+\geometry{
+  a4paper,
+  left=25mm,
+  right=25mm,
+  top=25mm,
+  bottom=25mm,
+}
+
+\begin{document}
+
+% --- Cover Page ---
+\begin{titlepage}
+    % Use sans-serif or default for cover if desired, but we will let it be Times as per standard or we can use \sffamily
+    \sffamily
+    \centering
+    \vspace*{1cm}
+    
+    \Large \textbf{\MakeUppercase{ {{ config.university }} }} \\
+    \vspace{0.5cm}
+    \large \textbf{\MakeUppercase{ {{ config.department }} }} \\
+    
+    \vspace{2.5cm}
+    \Large \textbf{LABORATORY REPORT} \\
+    \vspace{1cm}
+    
+    \begin{tabular}{ll}
+        \textbf{Course No:} & {{ config.course_code }} \\
+        \textbf{Course Title:} & {{ config.course_name }} \\
+    \end{tabular}
+    
+    \vspace{2cm}
+    
+    \textbf{Experiment No:} {{ experiment_no }} \\
+    \vspace{0.5cm}
+    \textbf{Name of the Experiment:} \\
+    \Large \textbf{ {{ experiment_name }} } \\
+    
+    \vspace{2.5cm}
+    
+    \begin{minipage}[t]{0.4\textwidth}
+        \begin{flushleft} \large
+            \emph{Submitted by:}\\
+            {{ config.student.name }} \\
+            Roll: {{ config.student.roll }} \\
+            Section: {{ config.student.section }}, Group: {{ config.student.group }}
+        \end{flushleft}
+    \end{minipage}
+    \hfill
+    \begin{minipage}[t]{0.5\textwidth}
+        \begin{flushright} \large
+            \emph{Submitted to:} \\
+            {% for teacher in config.teachers %}
+            {{ teacher.name }} \\
+            {{ teacher.designation }} \\
+            {% if not loop.last %}\vspace{0.3cm}{% endif %}
+            {% endfor %}
+        \end{flushright}
+    \end{minipage}
+
+    \vfill
+    \textbf{Date of Performance:} {{ date_performance }} \\
+    \textbf{Date of Submission:} {{ date_submission }}
+    
+\end{titlepage}
+
+% --- Main Content ---
+\setcounter{page}{1}
+\rmfamily % Ensure we are back to Times Roman
+\normalsize
+
+\begin{center}
+    \textbf{Experiment No:} {{ experiment_no }} \\
+    \vspace{0.2cm}
+    \textbf{Name of the Experiment:} {{ experiment_name }}
+\end{center}
+\vspace{0.5cm}
+
+{% if sections.objectives %}
+\section{Objectives}
+\begin{itemize}
+{% for obj in sections.objectives %}
+    \item {{ obj }}
+{% endfor %}
+\end{itemize}
+{% endif %}
+
+\section{Introduction}
+{{ sections.theory }}
+
+{% if theory_img %}
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.8\textwidth]{ {{- theory_img -}} }
+    \caption{Reference diagram}
+\end{figure}
+{% endif %}
+
+\section{Circuit Design}
+{{ sections.circuit_design }}
+
+{% if circuit_img %}
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.8\textwidth]{ {{- circuit_img -}} }
+    \caption{Experimental Circuit Diagram}
+\end{figure}
+{% endif %}
+
+\section{Required Apparatus}
+\begin{itemize}
+{% for app in sections.apparatus %}
+    \item {{ app.name }} (Quantity: {{ app.quantity }})
+{% endfor %}
+\end{itemize}
+
+\section{Procedure}
+\begin{enumerate}
+{% for step in sections.procedure %}
+    \item {{ step }}
+{% endfor %}
+\end{enumerate}
+
+\section{Result}
+{{ sections.data_table_latex }}
+
+{% for plot in plots %}
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.8\textwidth]{ {{- plot.path -}} }
+    \caption{ {{ plot.caption }} }
+\end{figure}
+{% endfor %}
+
+\section{Discussion}
+{{ sections.discussion }}
+
+\section{Conclusion}
+{{ sections.conclusion }}
+
+\section{References}
+\begin{enumerate}
+{% for ref in sections.references %}
+    \item {{ ref }}
+{% endfor %}
+\end{enumerate}
+
+\end{document}

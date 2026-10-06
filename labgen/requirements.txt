@@ -7,3 +7,11 @@ pandas
 matplotlib
 tectonic
 duckduckgo-search
+pdfplumber
+PyMuPDF
+lightgbm
+scikit-learn
+sentence-transformers
+faiss-cpu
+spacy
+requests

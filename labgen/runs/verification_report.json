@@ -1,0 +1,141 @@
+{
+  "summary": {
+    "passed": false,
+    "failures": 8,
+    "warnings": 5,
+    "info": 1
+  },
+  "issues": [
+    {
+      "module": "text",
+      "severity": "high",
+      "category": "repetition",
+      "message": "Discussion has high repetition (score=1.00)",
+      "location": {
+        "section": "Discussion"
+      }
+    },
+    {
+      "module": "text",
+      "severity": "high",
+      "category": "repetition",
+      "message": "Conclusion has high repetition (score=1.00)",
+      "location": {
+        "section": "Conclusion"
+      }
+    },
+    {
+      "module": "text",
+      "severity": "medium",
+      "category": "word_count",
+      "message": "Introduction only 0 words (minimum 220)",
+      "location": {
+        "section": "Introduction"
+      }
+    },
+    {
+      "module": "text",
+      "severity": "medium",
+      "category": "tense",
+      "message": "Discussion has 6 present-tense verbs (should be past tense)",
+      "location": {
+        "section": "Discussion"
+      }
+    },
+    {
+      "module": "text",
+      "severity": "medium",
+      "category": "tense",
+      "message": "Conclusion has 12 present-tense verbs (should be past tense)",
+      "location": {
+        "section": "Conclusion"
+      }
+    },
+    {
+      "module": "data",
+      "severity": "high",
+      "category": "data_mismatch",
+      "message": "Table claims -50.0 mA at -1.5V; simulation shows 16.0 mA (error 412%)",
+      "location": {
+        "section": "Result",
+        "voltage": -1.5
+      }
+    },
+    {
+      "module": "data",
+      "severity": "high",
+      "category": "data_mismatch",
+      "message": "Table claims -0.1 mA at -0.8V; simulation shows -1.4 mA (error 93%)",
+      "location": {
+        "section": "Result",
+        "voltage": -0.8
+      }
+    },
+    {
+      "module": "data",
+      "severity": "high",
+      "category": "data_mismatch",
+      "message": "Table claims 0.0 mA at 0.0V; simulation shows -0.7 mA (error 100%)",
+      "location": {
+        "section": "Result",
+        "voltage": 0.0
+      }
+    },
+    {
+      "module": "data",
+      "severity": "high",
+      "category": "data_mismatch",
+      "message": "Table claims 0.1 mA at 0.8V; simulation shows 702.4 mA (error 100%)",
+      "location": {
+        "section": "Result",
+        "voltage": 0.8
+      }
+    },
+    {
+      "module": "data",
+      "severity": "high",
+      "category": "data_mismatch",
+      "message": "Table claims 50.0 mA at 1.5V; simulation shows 0.8 mA (error 6244%)",
+      "location": {
+        "section": "Result",
+        "voltage": 1.5
+      }
+    },
+    {
+      "module": "structure",
+      "severity": "high",
+      "category": "missing_sections",
+      "message": "Missing required sections: objectives, theory, apparatus",
+      "location": {
+        "sections": [
+          "objectives",
+          "theory",
+          "apparatus"
+        ]
+      }
+    },
+    {
+      "module": "structure",
+      "severity": "medium",
+      "category": "empty_apparatus",
+      "message": "Apparatus list is empty",
+      "location": {
+        "section": "Required Apparatus"
+      }
+    },
+    {
+      "module": "structure",
+      "severity": "medium",
+      "category": "no_figures",
+      "message": "No figures/plots in report",
+      "location": {}
+    },
+    {
+      "module": "semantics",
+      "severity": "low",
+      "category": "llm_error",
+      "message": "LLM check failed: No API key configured",
+      "location": {}
+    }
+  ]
+}

@@ -5,10 +5,6 @@ import os
 KNOWLEDGE_HUB_PATH = "/home/sword/Documents/projects/tools/knowledge_hub.py"
 
 def get_research_context(query):
-    """
-    Calls the external knowledge_hub.py script to perform a web search and
-    returns a formatted string of the research context.
-    """
     if not os.path.exists(KNOWLEDGE_HUB_PATH):
         print(f"Warning: knowledge_hub.py not found at {KNOWLEDGE_HUB_PATH}. Using internal DDGS fallback.")
         try:
@@ -24,27 +20,26 @@ def get_research_context(query):
         except ImportError:
             print("Please install duckduckgo-search (pip install duckduckgo-search) for internal research fallback.")
             return "No research context available."
-    
+
     try:
-        # knowledge_hub.py outputs JSON when called with --search
         result = subprocess.run(
             ["python", KNOWLEDGE_HUB_PATH, "--search", query],
             capture_output=True,
             text=True,
             check=True
         )
-        
+
         data = json.loads(result.stdout)
-        
+
         context_lines = []
         for i, item in enumerate(data):
             title = item.get("title", "No Title")
             href = item.get("href", "No URL")
             body = item.get("body", "No Body")
             context_lines.append(f"[{i+1}] {title}\\nURL: {href}\\nSnippet: {body}\\n")
-            
+
         return "\\n".join(context_lines)
-        
+
     except subprocess.CalledProcessError as e:
         print(f"Error calling knowledge_hub.py: {e.stderr}")
         return "Error retrieving research context."
@@ -54,3 +49,18 @@ def get_research_context(query):
     except Exception as e:
         print(f"Unexpected error in get_research_context: {e}")
         return "Error retrieving research context."
+
+def save_research_context(run_dir: str, experiment_name: str, research_context: str):
+    os.makedirs(run_dir, exist_ok=True)
+    path = os.path.join(run_dir, "research_context.json")
+    with open(path, "w") as f:
+        json.dump({"experiment_name": experiment_name, "context": research_context}, f, indent=2)
+    return path
+
+def load_research_context(run_dir: str) -> str:
+    path = os.path.join(run_dir, "research_context.json")
+    if os.path.exists(path):
+        with open(path, "r") as f:
+            data = json.load(f)
+        return data.get("context", "")
+    return ""

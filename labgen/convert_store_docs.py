@@ -18,25 +18,27 @@ MARKITDOWN_SCRIPT = os.path.join(WEB_SCRAPER_PATH, "examples", "content_extract"
 
 def convert_batch(input_dir: str, output_dir: str) -> list:
     os.makedirs(output_dir, exist_ok=True)
-    print(f"Converting all files in {input_dir} recursively...")
+    input_abs = os.path.abspath(input_dir)
+    output_abs = os.path.abspath(output_dir)
+    print(f"Converting all files in {input_abs} recursively...")
     try:
         result = subprocess.run(
-            ["python", MARKITDOWN_SCRIPT, input_dir, "-r", "-o", output_dir],
+            ["python", MARKITDOWN_SCRIPT, input_abs, "-r", "-o", output_abs],
             capture_output=True, text=True, timeout=600, cwd=WEB_SCRAPER_PATH
         )
         if result.returncode == 0:
             print(result.stdout)
             results = []
-            for md_file in Path(output_dir).rglob("*.md"):
+            for md_file in Path(output_abs).rglob("*.md"):
                 with open(md_file, "r") as f:
                     content = f.read()
                 results.append({"status": "success", "input": str(md_file), "output": str(md_file), "content": content})
             return results
         else:
             print(f"Error: {result.stderr}")
-            return [{"status": "error", "input": input_dir, "error": result.stderr}]
+            return [{"status": "error", "input": input_abs, "error": result.stderr}]
     except Exception as e:
-        return [{"status": "error", "input": input_dir, "error": str(e)}]
+        return [{"status": "error", "input": input_abs, "error": str(e)}]
 
 def build_training_data(rag_dir: str, output_jsonl: str):
     """Build JSONL for classifier training from converted markdown files."""

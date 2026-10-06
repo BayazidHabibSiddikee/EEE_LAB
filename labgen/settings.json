@@ -10,10 +10,31 @@
     "ocr_enabled": false
   },
   "scraper": {
-    "enabled": true,
-    "camoufox_path": "auto"
+    "enabled": true
   },
   "latex": {
     "font": "Times New Roman"
+  },
+  "report": {
+    "university": "Rajshahi University of Engineering \\& Technology",
+    "department": "Department of Electrical and Electronic Engineering",
+    "course_code": "EEE 3102",
+    "course_name": "Digital Signal Processing Sessional",
+    "student": {
+      "name": "John Doe",
+      "roll": "1901000",
+      "section": "A",
+      "group": "1"
+    },
+    "teachers": [
+      {
+        "name": "Dr. Jane Smith",
+        "designation": "Professor"
+      },
+      {
+        "name": "Mr. Bob Brown",
+        "designation": "Lecturer"
+      }
+    ]
   }
 }

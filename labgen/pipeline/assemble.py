@@ -1,12 +1,18 @@
 import os
-import yaml
 import jinja2
 import subprocess
 import shutil
 
-def load_config(config_path="config.yaml"):
-    with open(config_path, 'r') as f:
-        return yaml.safe_load(f)
+import json
+
+def load_config(config_path="settings.json"):
+    # Resolve relative to the labgen directory, not CWD, if needed.
+    # main.py runs from labgen usually, but it's safer to use absolute paths based on __file__
+    base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    full_path = os.path.join(base_dir, config_path)
+    with open(full_path, 'r') as f:
+        settings = json.load(f)
+    return settings.get("report", {})
 
 def render_latex(template_path, output_tex_path, context):
     template_dir = os.path.dirname(template_path)

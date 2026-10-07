@@ -114,14 +114,21 @@ def _extract_latex_table(text: str) -> str:
     return "\n".join(table_lines)
 
 import re
+from pipeline.ocr import extract_text_with_ocr
 
 def extract_pdf(pdf_path: str) -> Dict[str, Any]:
     if not os.path.exists(pdf_path):
         return {"error": "File not found"}
 
-    markdown = _run_markitdown(pdf_path)
-    if not markdown:
-        markdown = _extract_text_pymupdf(pdf_path)
+    # Use OCR-enabled extraction
+    ocr_result = extract_text_with_ocr(pdf_path)
+    markdown = ocr_result.get("text", "")
+    method = ocr_result.get("method", "unknown")
+
+    # Also try markitdown for comparison
+    markitdown_md = _run_markitdown(pdf_path)
+    if markitdown_md and len(markitdown_md) > len(markdown):
+        markdown = markitdown_md
 
     tables = _extract_tables_pdfplumber(pdf_path)
     sections = _guess_sections(markdown)
@@ -133,10 +140,14 @@ def extract_pdf(pdf_path: str) -> Dict[str, Any]:
         "sections": sections,
         "tables": tables,
         "latex_table": latex_table,
+        "ocr_method": method,
+        "ocr_scanned": ocr_result.get("scanned", False),
+        "ocr_pages": ocr_result.get("pages", []),
         "metadata": {
-            "pages": len(tables) if tables else 0,
+            "pages": len(ocr_result.get("pages", [])),
             "has_tables": len(tables) > 0,
-            "section_count": len(sections)
+            "section_count": len(sections),
+            "extraction_method": method
         }
     }
 

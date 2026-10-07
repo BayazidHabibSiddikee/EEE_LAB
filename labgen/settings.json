@@ -16,7 +16,15 @@
     "enabled": true,
     "use_web": true,
     "top_k": 5,
-    "ocr_enabled": false
+    "ocr_enabled": true,
+    "ocr_lang": "eng",
+    "ocr_dpi": 200
+  },
+  "freecad": {
+    "enabled": true,
+    "cmd": "freecadcmd",
+    "timeout": 120,
+    "training_data_dir": "freecad_training_data"
   },
   "scraper": {
     "enabled": true

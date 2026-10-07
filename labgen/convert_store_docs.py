@@ -11,8 +11,8 @@ import json
 from pathlib import Path
 
 WEB_SCRAPER_PATH = "/home/sword/Documents/web-scraper"
-STORE_DIR = "/home/sword/Documents/EEE_LAB/store"
-OUTPUT_DIR = "/home/sword/Documents/EEE_LAB/labgen/rag_data"
+STORE_DIR = "/home/sword/Documents/LAB_Expert/store"
+OUTPUT_DIR = "/home/sword/Documents/LAB_Expert/labgen/rag_data"
 
 MARKITDOWN_SCRIPT = os.path.join(WEB_SCRAPER_PATH, "examples", "content_extract", "markitdown_convert.py")
 

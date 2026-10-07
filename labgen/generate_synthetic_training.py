@@ -11,9 +11,9 @@ import re
 from pathlib import Path
 from typing import Dict, List, Any
 
-RAG_DIR = "/home/sword/Documents/EEE_LAB/labgen/rag_data"
-OUTPUT_DIR = "/home/sword/Documents/EEE_LAB/labgen/synthetic_training"
-IV_DATA_PATH = "/home/sword/Documents/EEE_LAB/labgen/runs/analyzing_triac_characteristics/iv_data.txt"
+RAG_DIR = "/home/sword/Documents/LAB_Expert/labgen/rag_data"
+OUTPUT_DIR = "/home/sword/Documents/LAB_Expert/labgen/synthetic_training"
+IV_DATA_PATH = "/home/sword/Documents/LAB_Expert/labgen/runs/analyzing_triac_characteristics/iv_data.txt"
 
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
@@ -387,8 +387,8 @@ def main():
     
     # Copy to labgen/models for production use
     import shutil
-    shutil.copy2(model_path, "/home/sword/Documents/EEE_LAB/labgen/models/verifier_classifier.txt")
-    shutil.copy2(feature_path, "/home/sword/Documents/EEE_LAB/labgen/models/feature_names.json")
+    shutil.copy2(model_path, "/home/sword/Documents/LAB_Expert/labgen/models/verifier_classifier.txt")
+    shutil.copy2(feature_path, "/home/sword/Documents/LAB_Expert/labgen/models/feature_names.json")
     print("Copied to labgen/models/")
     
     # Feature importance

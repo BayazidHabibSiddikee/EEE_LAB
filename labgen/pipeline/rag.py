@@ -8,8 +8,8 @@ import numpy as np
 from rank_bm25 import BM25Okapi
 from sentence_transformers import SentenceTransformer
 
-RAG_DIR = "/home/sword/Documents/EEE_LAB/labgen/rag_data"
-INDEX_DIR = "/home/sword/Documents/EEE_LAB/labgen/rag_index"
+RAG_DIR = "/home/sword/Documents/LAB_Expert/labgen/rag_data"
+INDEX_DIR = "/home/sword/Documents/LAB_Expert/labgen/rag_index"
 
 os.makedirs(INDEX_DIR, exist_ok=True)
 

@@ -26,16 +26,28 @@ def generate_cadquery_script(spec: str, feedback: str = "") -> Dict[str, str]:
     return call_llm(CAD_SYSTEM_PROMPT, user_prompt, response_json=True)
 
 def execute_and_validate(script_code: str, output_path: str) -> Optional[str]:
-    """Executes the CadQuery script and exports to STEP. Returns error string if it fails, None if success."""
+    """Executes the CadQuery script and exports to STEP & SVG. Returns error string if it fails, None if success."""
+    svg_path = output_path.replace(".step", ".svg")
+    
     # Write the script to a temporary file
     with tempfile.NamedTemporaryFile(suffix=".py", mode="w", delete=False) as f:
         # Append export logic so the `result` is saved
-        full_code = script_code + f"\n\nimport cadquery as cq\nif 'result' in locals():\n    cq.exporters.export(result, '{output_path}')\nelse:\n    raise ValueError('Variable \\\"result\\\" not found in script')\n"
+        full_code = script_code + f"""
+
+import cadquery as cq
+if 'result' in locals():
+    cq.exporters.export(result, '{output_path}')
+    try:
+        cq.exporters.export(result, '{svg_path}')
+    except Exception as e:
+        print("SVG Export warning:", e)
+else:
+    raise ValueError('Variable "result" not found in script')
+"""
         f.write(full_code)
         temp_script = f.name
         
     try:
-        # Execute in a separate process to catch segmentation faults or hard crashes
         result = subprocess.run(
             [sys.executable, temp_script],
             capture_output=True, text=True, timeout=30
@@ -70,7 +82,7 @@ def design_cad_agent(spec: str, output_path: str, max_retries: int = 3) -> bool:
                 print(f"  Success! Exported to {output_path}")
                 return True
             else:
-                print(f"  Execution failed: {error.strip().splitlines()[-1]}")
+                print(f"  Execution failed:\n{error.strip().splitlines()[-1] if error.strip().splitlines() else error}")
                 feedback = error
         except Exception as e:
             print(f"  LLM generation failed: {e}")

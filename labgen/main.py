@@ -11,6 +11,7 @@ from pipeline.assemble import load_config, render_latex, compile_pdf
 from pipeline.llm import generate_report_sections, generate_circuit_design
 from pipeline.research import get_hybrid_research_context, save_research_context
 from pipeline.rag import build_rag_index
+from pipeline.cad import design_cad_agent
 from pipeline.verify import run_all_checks, write_report, extract_features
 
 def draw_triac_circuit(output_path):
@@ -266,6 +267,13 @@ def run_generation(args, settings):
 
     if circuit_json:
         sections["circuit_design"] = circuit_json.get("circuit_design_text", "")
+
+    if args.cad_prompt:
+        cad_step_path = os.path.join(run_dir, "cad_model.step")
+        success = design_cad_agent(args.cad_prompt, cad_step_path)
+        if success:
+            context["cad_img"] = os.path.abspath(cad_step_path.replace(".step", ".svg")).replace("\\", "/")
+
         sections["apparatus"] = circuit_json.get("apparatus", [])
     else:
         sections["circuit_design"] = "A variable DC voltage source is connected across the main terminals. A gate current is provided to trigger the device. The voltage is swept from negative to positive values."
@@ -396,7 +404,8 @@ def run_verification(args, settings):
         write_report(results, out_path)
 
 def run_index(args, settings):
-    from pipeline.rag import build_rag_index, get_rag_context
+    from pipeline.rag import build_rag_index
+from pipeline.cad import design_cad_agent, get_rag_context
     if args.rebuild:
         print("Rebuilding RAG index...")
         build_rag_index(force_rebuild=True)
@@ -415,6 +424,7 @@ def main():
     gen_parser = subparsers.add_parser("generate", help="Generate lab report")
     gen_parser.add_argument("name", help="Name of the experiment")
     gen_parser.add_argument("circuit_prompt", nargs="?", default="", help="Prompt describing circuit connections")
+    gen_parser.add_argument("--cad-prompt", help="Prompt for generating 3D CAD mechanical models via CadQuery")
     gen_parser.add_argument("--exp", type=int, default=2, help="Experiment number")
 
     verify_parser = subparsers.add_parser("verify", help="Verify lab report")

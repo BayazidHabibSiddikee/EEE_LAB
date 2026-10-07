@@ -1,0 +1,153 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 10 15 26;
+    --foreground: 232 244 253;
+  }
+  
+  .dark {
+    --background: 10 15 26;
+    --foreground: 232 244 253;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-cyber-border;
+  }
+  
+  body {
+    @apply bg-cyber-bg text-cyber-text font-mono;
+    background-image: 
+      linear-gradient(rgba(0, 255, 200, 0.02) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0, 255, 200, 0.02) 1px, transparent 1px);
+    background-size: 40px 40px;
+  }
+  
+  /* Scanline overlay */
+  body::before {
+    content: '';
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: repeating-linear-gradient(
+      0deg,
+      rgba(0, 0, 0, 0.15),
+      rgba(0, 0, 0, 0.15) 1px,
+      transparent 1px,
+      transparent 3px
+    );
+    pointer-events: none;
+    z-index: 9999;
+    opacity: 0.4;
+    animation: scanline 8s linear infinite;
+  }
+}
+
+@layer components {
+  .cyber-panel {
+    @apply bg-cyber-surface border border-cyber-border rounded-lg p-4 relative overflow-hidden;
+    box-shadow: 
+      0 0 20px rgba(0, 255, 200, 0.1),
+      inset 0 0 20px rgba(0, 255, 200, 0.05);
+  }
+  
+  .cyber-panel::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, #00ffc8, transparent);
+    opacity: 0.6;
+  }
+  
+  .cyber-input {
+    @apply w-full bg-cyber-bg border border-cyber-border rounded px-3 py-2 text-cyber-text placeholder-cyber-textDim font-mono transition-all duration-200;
+    @apply focus:outline-none focus:border-cyber-primary focus:ring-1 focus:ring-cyber-primary;
+  }
+  
+  .cyber-btn {
+    @apply px-4 py-2 bg-cyber-surface border border-cyber-border text-cyber-text font-mono rounded transition-all duration-200;
+    @apply hover:bg-cyber-border hover:border-cyber-primary hover:text-cyber-primary hover:shadow-glow;
+    @apply active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+  
+  .cyber-btn-primary {
+    @apply bg-cyber-primary text-cyber-bg border-cyber-primary hover:bg-cyber-primary/90 hover:shadow-glow;
+  }
+  
+  .cyber-btn-danger {
+    @apply border-cyber-secondary text-cyber-secondary hover:bg-cyber-secondary/10 hover:text-cyber-secondary hover:shadow-glow-secondary;
+  }
+  
+  .cyber-terminal {
+    @apply font-mono text-sm leading-relaxed;
+  }
+  
+  .cyber-terminal-line {
+    @apply relative pl-8;
+  }
+  
+  .cyber-terminal-line::before {
+    content: '> ';
+    @apply absolute left-2 text-cyber-primary opacity-70;
+  }
+  
+  .folder-tree {
+    @apply font-mono text-sm;
+  }
+  
+  .folder-item {
+    @apply flex items-center gap-2 px-2 py-1 rounded cursor-pointer transition-colors;
+    @apply hover:bg-cyber-border hover:text-cyber-primary;
+  }
+  
+  .folder-item.active {
+    @apply bg-cyber-border text-cyber-primary border-l-2 border-cyber-primary;
+  }
+  
+  .file-item {
+    @apply flex items-center gap-2 px-2 py-1 rounded cursor-pointer transition-colors ml-4;
+    @apply hover:bg-cyber-border/50 hover:text-cyber-textDim;
+  }
+  
+  .status-indicator {
+    @apply w-2 h-2 rounded-full transition-all duration-300;
+  }
+  
+  .status-running {
+    @apply bg-cyber-primary animate-pulse-slow;
+    box-shadow: 0 0 8px rgba(0, 255, 200, 0.6);
+  }
+  
+  .status-complete {
+    @apply bg-green-400;
+  }
+  
+  .status-error {
+    @apply bg-cyber-secondary animate-pulse;
+  }
+  
+  .status-idle {
+    @apply bg-cyber-textDim;
+  }
+}
+
+@layer utilities {
+  .text-glow {
+    text-shadow: 0 0 10px currentColor;
+  }
+  
+  .animate-delay-100 { animation-delay: 100ms; }
+  .animate-delay-200 { animation-delay: 200ms; }
+  .animate-delay-300 { animation-delay: 300ms; }
+  .animate-delay-500 { animation-delay: 500ms; }
+  .animate-delay-1000 { animation-delay: 1000ms; }
+}

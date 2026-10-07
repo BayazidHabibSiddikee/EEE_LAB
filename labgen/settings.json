@@ -32,8 +32,8 @@
     "training_data_dir": "freecad_training_data",
     "cad_model": {
       "provider": "local",
-      "model_name": "deepseek-coder",
-      "hf_repo": "deepseek-ai/deepseek-coder-1.3b-instruct"
+      "model_name": "zero-to-cad",
+      "hf_repo": "ADSKAILab/Zero-To-CAD-Qwen3-VL-2B"
     }
   },
   "scraper": {

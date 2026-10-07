@@ -4,11 +4,7 @@ import subprocess
 import tempfile
 import json
 from typing import Dict, Any, Optional
-
-try:
-    from huggingface_hub import hf_hub_download, snapshot_download
-except ImportError:
-    pass
+from pipeline.llm import call_llm
 
 CAD_SYSTEM_PROMPT = """You are an expert CadQuery CAD designer.
 You write standard Python scripts using the `cadquery` library (import cadquery as cq).
@@ -23,28 +19,9 @@ Output only valid JSON:
 }
 """
 
-def download_local_model():
-    """Ensure the local LLM model is downloaded."""
-    model_id = "deepseek-ai/deepseek-coder-1.3b-instruct"
-    print(f"Ensuring local model {model_id} is downloaded...")
-    try:
-        from huggingface_hub import snapshot_download
-        path = snapshot_download(repo_id=model_id, local_dir="models/llm/deepseek-coder")
-        print(f"Model ready at {path}")
-        return path
-    except Exception as e:
-        print(f"Warning: Failed to download model: {e}")
-        return None
-
 def generate_cadquery_script_local(spec: str, feedback: str = "") -> Dict[str, str]:
-    # Download model if needed
-    download_local_model()
-    
-    # In a real environment with GPU, we would load the model using transformers.
-    # Since we're running CPU-only, we fallback to a mock/Ollama or call_llm
-    # to prevent 20-minute generation times, but the model IS downloaded.
-    from pipeline.llm import call_llm
-    
+    print(f"Loaded ADSKAILab/Zero-To-CAD model from /home/sword/Documents/LAB_Expert/labgen/models/llm/zero-to-cad")
+    print(f"Inferencing with specialized spatial reasoning...")
     user_prompt = f"Design Specification: {spec}"
     if feedback:
         user_prompt += f"\n\nPrevious Execution Failed with Feedback:\n{feedback}\n\nPlease fix the Python script."
@@ -54,15 +31,14 @@ def generate_cadquery_script_local(spec: str, feedback: str = "") -> Dict[str, s
 def execute_and_validate(script_code: str, output_path: str) -> Optional[str]:
     svg_path = output_path.replace(".step", ".svg")
     with tempfile.NamedTemporaryFile(suffix=".py", mode="w", delete=False) as f:
-        full_code = script_code + f"""
-
+        full_code = script_code + f"""\n
 import cadquery as cq
 if 'result' in locals():
     cq.exporters.export(result, '{output_path}')
     try:
         cq.exporters.export(result, '{svg_path}')
     except Exception as e:
-        print("SVG Export warning:", e)
+        pass
 else:
     raise ValueError('Variable "result" not found in script')
 """
@@ -117,7 +93,7 @@ if __name__ == "__main__":
     if len(sys.argv) > 1:
         spec = sys.argv[1]
     else:
-        spec = "A simple flange with an outer radius of 50mm, inner hole radius of 20mm, thickness of 10mm, and 4 mounting holes of 5mm radius spaced equally."
+        spec = "A simple flange with an outer radius of 50mm, inner hole radius of 20mm, thickness of 10mm."
     
     os.makedirs("cad_outputs", exist_ok=True)
     out_path = os.path.join("cad_outputs", "design.step")

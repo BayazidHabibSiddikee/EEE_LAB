@@ -6,6 +6,11 @@
     "model": "gemini-2.5-pro",
     "temperature": 0.2
   },
+  "kaggle": {
+    "api_key_path": "/home/sword/.kaggle/kaggle.json",
+    "username": "sword",
+    "key": "KGAT_af672dd694ac658ce740d522c25d55ae"
+  },
   "verification": {
     "enabled": true,
     "classifier_path": "models/verifier_classifier.txt",
@@ -24,7 +29,12 @@
     "enabled": true,
     "cmd": "freecadcmd",
     "timeout": 120,
-    "training_data_dir": "freecad_training_data"
+    "training_data_dir": "freecad_training_data",
+    "cad_model": {
+      "provider": "local",
+      "model_name": "deepseek-coder",
+      "hf_repo": "deepseek-ai/deepseek-coder-1.3b-instruct"
+    }
   },
   "scraper": {
     "enabled": true

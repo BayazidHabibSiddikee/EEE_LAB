@@ -1,34 +1,81 @@
 # Development Plan
 
-## Phase 1: Core Scaffolding (Completed)
-- [x] Basic Python CLI.
-- [x] LaTeX Jinja2 templates.
-- [x] Ngspice integration.
+## Phase 1: Core Scaffolding ✅ COMPLETED
+- [x] Basic Python CLI with subcommands (generate, verify, index)
+- [x] LaTeX Jinja2 templates (RUET standard)
+- [x] Ngspice integration (batch mode, IV data parsing, plotting)
 
-## Phase 2: AI Integration (Completed)
-- [x] Integrate Gemini API for drafting sections.
-- [x] Dynamic circuit design prompt generation.
-- [x] Fallback mechanisms for simulation.
+## Phase 2: AI Integration ✅ COMPLETED
+- [x] Custom LLM provider support (Gemini + OpenAI-compatible)
+- [x] Dynamic circuit design prompt generation
+- [x] Fallback mechanisms for simulation
 
-## Phase 3: LangGraph & Architecture (Current)
-- [x] Define LangGraph state schema.
-- [x] Implement LangChain wrappers.
-- [x] Centralize config in `settings.json`.
-- [x] Ensure strict formatting (bordered tables, strict font sizes).
+## Phase 3: LangGraph & Architecture ✅ COMPLETED
+- [x] LangGraph state schema with generation + verification nodes
+- [x] Config centralized in `settings.json`
+- [x] Strict formatting enforcement
 
-## Phase 4: Advanced RAG (Future)
-- [ ] Implement OCR pipeline for documents in `store/`.
-- [ ] Vector database integration (e.g., ChromaDB or FAISS).
-- [ ] Advanced self-correction loops for `ngspice` convergence errors.
+## Phase 4: RAG + OCR ✅ COMPLETED
+- [x] Hybrid RAG: MiniLM embeddings (FAISS) + BM25 (rank_bm25) + RRF fusion
+- [x] OCR pipeline: pdf2image + pytesseract + paddleocr fallback
+- [x] Auto-detect scanned PDFs (PyMuPDF text threshold)
+- [x] 73 documents indexed (293 chunks) in `rag_index/`
+- [x] `convert_store_docs.py` for PDF/DOCX → Markdown (uses web-scraper's markitdown)
+- [x] CLI: `main.py index --rebuild --query "..." --top-k N`
 
-## Phase 5: Verification Pipeline (In Progress)
-- [x] Scaffold `verify.py` and `validators/` directory.
-- [ ] Implement Rule-based validators (`text.py`, `data.py`, `structure.py`, `circuit.py`).
-- [ ] Implement LLM Semantic validator (`semantics.py`) for physics/logic checks.
-- [ ] Build standalone CLI for verifying external PDF submissions.
-- [ ] Train XGBoost/LightGBM classifier using weak supervision (Snorkel) on 200 unlabeled PDFs to act as a fast pre-filter.
+## Phase 5: Verification Pipeline ✅ COMPLETED
+- [x] 6 validators implemented:
+  - `text.py`: repetition (n-gram), word count, tense (spaCy), objectives format
+  - `data.py`: LaTeX table parse + ngspice interpolation + relative error (>20% flag)
+  - `structure.py`: section bitmap, apparatus/figures/references counts
+  - `circuit.py`: netlist-apparatus overlap, schemdraw AST syntax check
+  - `references.py`: HTTP HEAD URL validity, domain overlap with research_context
+  - `semantics.py`: LLM-as-judge (research + IV + discussion/conclusion → JSON violations)
+- [x] Standalone verify CLI: `main.py verify <pdf|run_dir> [--data iv.txt]`
+- [x] Auto-verification after generation (saves `verification_report.json`)
+- [x] LightGBM classifier (22 features, weak supervision from 73 clean + 297 synthetic = 370 samples)
+- [x] Model saved to `models/verifier_classifier.txt` + `feature_names.json`
+- [x] ROC-AUC 0.88 on synthetic test, predicts `fail` (91%) on known-bad TRIAC report
 
-## Phase 6: Open Source / Local AI Migration (Future)
-- [ ] Transition FluidSim Linux clone into a native MCP server for PLC design.
-- [ ] Fine-tune an open-source model (e.g., Qwen 2.5) for native tool-calling (ReAct/MCP) to replace Gemini.
-- [ ] Create synthetic training datasets from verified-good LabGen runs to train the local model for end-to-end report generation.
+## Phase 6: FreeCAD Integration ✅ COMPLETED
+- [x] Headless executor: `freecadcmd` subprocess with timeout
+- [x] Script validator: AST parse, import/API/export checks
+- [x] Synthetic data generator: 10 primitive + 2 boolean templates → parametric variations
+- [x] Dataset output: `freecad_training_data/dataset.jsonl` (NL description + FreeCAD script pairs)
+- [x] Agent class: iterative design loop (generate → validate → execute → LLM fix)
+
+## Phase 7: Classifier Training on Real Data 🔄 IN PROGRESS
+**Current Task**: Train LightGBM on your collected 200 PDFs (with labels if available)
+
+### Immediate Steps:
+1. **Prepare training data:**
+   ```
+   # Option A: Weak supervision (no manual labels)
+   python train_classifier.py --input-dir Documents --output-dir models/
+   
+   # Option B: With manual labels (preferred)
+   python train_classifier.py --input-dir Documents --labels-file labels.csv --output-dir models/
+   # labels.csv format: filename,label  (label: 0=pass, 1=fail)
+   ```
+
+2. **On Kaggle (recommended for 200+ PDFs):**
+   - Upload PDFs to Kaggle dataset
+   - Create notebook with `train_classifier.py`
+   - Run with `--input-dir /kaggle/input/pdfs --output-dir /kaggle/working/models/`
+   - Download `verifier_classifier.txt` and `feature_names.json` to `labgen/models/`
+
+3. **Verify new model:**
+   ```bash
+   python main.py verify runs/triac_characteristics --experiment "TRIAC Characteristics"
+   # Should show classifier prediction in output
+   ```
+
+## Phase 8: FreeCAD Fine-tuning (Next)
+- [ ] LoRA-train Code LLM (DeepSeek-Coder/CodeLlama/Qwen2.5-Coder) on `freecad_training_data/dataset.jsonl`
+- [ ] Deploy as local tool-calling agent (ReAct/MCP) via Ollama/vLLM
+- [ ] Integrate FreeCAD Agent into LangGraph for mechanical design validation
+
+## Phase 9: Local LLM Migration (Future)
+- [ ] Replace Gemini with local model for all LLM calls (circuit, sections, semantics, FreeCAD agent)
+- [ ] Fine-tune on LabGen verified-good runs (report generation + circuit design)
+- [ ] Add MCP server for FluidSim/web-scraper/FreeCAD tool calling

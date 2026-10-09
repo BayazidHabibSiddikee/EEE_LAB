@@ -113,3 +113,17 @@
   .animate-delay-500 { animation-delay: 500ms; }
   .animate-delay-1000 { animation-delay: 1000ms; }
 }
+@layer base {
+  button, a, input, select, textarea {
+    @apply focus:outline-none focus-visible:ring-2 focus-visible:ring-cyber-primary focus-visible:ring-offset-1 focus-visible:ring-offset-cyber-bg transition-shadow;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

@@ -21,10 +21,10 @@ export function ReportGenerator({ questions, onChange, onSubmit, isGenerating, v
   return (
     <div className="space-y-4 animate-in fade-in slide-in-from-left-4 duration-500">
       <div className="flex items-center justify-between">
-        <h2 className="font-display text-lg text-cyber-primary flex items-center gap-2">
+        <h1 className="font-display text-lg text-cyber-primary flex items-center gap-2">
           <Brain className="w-5 h-5" />
           REPORT GENERATOR
-        </h2>
+        </h1>
         {isGenerating && (
           <div className="flex items-center gap-2 px-2 py-1 bg-cyber-primary/10 border border-cyber-primary/30 rounded text-cyber-primary text-xs font-mono">
             <Loader2 className="w-3 h-3 animate-spin" />
@@ -110,6 +110,7 @@ function QuestionField({ question, onChange, index, expanded, onToggleExpand }: 
         onClick={onToggleExpand}
         className="w-full flex items-center justify-between p-2 rounded hover:bg-cyber-border/50 transition-colors"
         aria-expanded={expanded}
+        aria-controls={`${question.id}-content`}
       >
         <div className="flex items-center gap-3">
           <span className="text-cyber-textDim text-sm font-mono">{String(index + 1).padStart(2, '0')}</span>
@@ -122,10 +123,10 @@ function QuestionField({ question, onChange, index, expanded, onToggleExpand }: 
       </button>
 
       {expanded && (
-        <div className="border-t border-cyber-border pt-4 animate-in slide-in-from-top-2 duration-200">
+        <div id={`${question.id}-content`} className="border-t border-cyber-border pt-4 animate-in slide-in-from-top-2 duration-200">
           <div className="space-y-3">
             {question.type === 'textarea' && (
-              <textarea
+              <textarea id={question.id} aria-label={question.label}
                 value={localValue}
                 onChange={handleChange}
                 placeholder={question.placeholder}
@@ -134,7 +135,7 @@ function QuestionField({ question, onChange, index, expanded, onToggleExpand }: 
               />
             )}
             {question.type === 'select' && (
-              <select value={localValue} onChange={handleChange} className="cyber-input">
+              <select id={question.id} aria-label={question.label} value={localValue} onChange={handleChange} className="cyber-input">
                 <option value="">Select...</option>
                 {question.options?.map(opt => (
                   <option key={opt} value={opt}>{opt}</option>
@@ -142,7 +143,7 @@ function QuestionField({ question, onChange, index, expanded, onToggleExpand }: 
               </select>
             )}
             {(question.type === 'text' || question.type === 'number') && (
-              <input
+              <input id={question.id} aria-label={question.label}
                 type={question.type}
                 value={localValue}
                 onChange={handleChange}

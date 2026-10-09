@@ -1,5 +1,5 @@
-import { Terminal, X, Trash2, Copy, Maximize2, Minimize2, Download } from 'lucide-react'
-import { useRef, useEffect, useState, useMemo } from 'react'
+import { Terminal, X, Maximize2, Minimize2 } from 'lucide-react'
+import { useRef, useEffect, useState, useMemo, UIEvent } from 'react'
 import { cn } from '../lib/utils'
 
 interface TerminalOutputProps {
@@ -9,10 +9,12 @@ interface TerminalOutputProps {
 }
 
 export function TerminalOutput({ logs, isActive, onClose }: TerminalOutputProps) {
-  const terminalRef = useRef<HTMLDivElement>(null)
-  const endOfLogsRef = useRef<HTMLDivElement>(null)
+  const containerRef = useRef<HTMLDivElement>(null)
   const [isMinimized, setIsMinimized] = useState(false)
   const [isMaximized, setIsMaximized] = useState(false)
+  
+  const [scrollTop, setScrollTop] = useState(0)
+  const [containerHeight, setContainerHeight] = useState(0)
 
   const terminalLines = useMemo(() => {
     if (logs.length === 0) {
@@ -25,11 +27,60 @@ export function TerminalOutput({ logs, isActive, onClose }: TerminalOutputProps)
     return logs.map(log => ({ type: 'log', content: log }))
   }, [logs])
 
+  // Measure container height
   useEffect(() => {
-    if (!isMinimized && endOfLogsRef.current) {
-      endOfLogsRef.current.scrollIntoView({ behavior: 'auto' })
+    if (!isMinimized && containerRef.current) {
+      const observer = new ResizeObserver(entries => {
+        for (let entry of entries) {
+          setContainerHeight(entry.contentRect.height)
+        }
+      })
+      observer.observe(containerRef.current)
+      return () => observer.disconnect()
     }
-  }, [logs, isMinimized])
+  }, [isMinimized, isMaximized])
+
+  // Scroll to bottom on new logs using requestAnimationFrame
+  useEffect(() => {
+    if (!isMinimized && containerRef.current) {
+      requestAnimationFrame(() => {
+        if (containerRef.current) {
+          containerRef.current.scrollTop = containerRef.current.scrollHeight
+        }
+      })
+    }
+  }, [logs.length, isMinimized])
+
+  const handleScroll = (e: UIEvent<HTMLDivElement>) => {
+    setScrollTop(e.currentTarget.scrollTop)
+  }
+
+  const ITEM_HEIGHT = 24
+  const totalItems = terminalLines.length + 1 // +1 for prompt
+  const totalHeight = totalItems * ITEM_HEIGHT
+
+  const startIndex = Math.max(0, Math.floor(scrollTop / ITEM_HEIGHT) - 5)
+  const endIndex = Math.min(totalItems - 1, Math.ceil((scrollTop + containerHeight) / ITEM_HEIGHT) + 5)
+
+  const visibleItems = []
+  for (let i = startIndex; i <= endIndex; i++) {
+    if (i === terminalLines.length) {
+      visibleItems.push(
+        <div key="prompt" style={{ position: 'absolute', top: i * ITEM_HEIGHT, height: ITEM_HEIGHT }} className="flex items-center gap-2 px-1 w-full">
+          <span className="text-cyber-textDim text-xs font-mono tabular-nums w-10 text-right"></span>
+          <span className="flex-shrink-0 px-2 text-cyber-primary">[CMD]</span>
+          <span className="text-cyber-primary">root@labgen:</span>
+          <span className="text-cyber-accent">~</span>
+          <span className="text-cyber-primary">$</span>
+          <span className="w-4 h-4 bg-cyber-primary animate-pulse inline-block ml-1" />
+        </div>
+      )
+    } else {
+      visibleItems.push(
+        <TerminalLine key={i} line={terminalLines[i]} index={i} style={{ position: 'absolute', top: i * ITEM_HEIGHT, height: ITEM_HEIGHT, width: '100%' }} />
+      )
+    }
+  }
 
   if (isMinimized) {
     return (
@@ -95,21 +146,13 @@ export function TerminalOutput({ logs, isActive, onClose }: TerminalOutputProps)
 
       {/* Terminal Content */}
       <div 
-        ref={terminalRef}
-        className="flex-1 overflow-y-auto p-4 font-mono text-sm leading-relaxed bg-cyber-bg"
+        ref={containerRef}
+        onScroll={handleScroll}
+        className="flex-1 font-mono text-sm leading-relaxed bg-cyber-bg relative overflow-y-auto overflow-x-hidden scrollbar-thin scrollbar-thumb-cyber-border scrollbar-track-transparent" 
         style={{ fontFamily: 'JetBrains Mono, Fira Code, Consolas, monospace' }}
       >
-        <div className="space-y-1">
-          {terminalLines.map((line, i) => (
-            <TerminalLine key={i} line={line} />
-          ))}
-          <div className="flex items-center gap-2 pt-2 border-t border-cyber-border/50">
-            <span className="text-cyber-primary">root@labgen:</span>
-            <span className="text-cyber-accent">~</span>
-            <span className="text-cyber-primary">$</span>
-            <span className="w-4 h-5 bg-cyber-primary animate-pulse inline-block ml-1" />
-          </div>
-          <div ref={endOfLogsRef} />
+        <div style={{ height: totalHeight, position: 'relative', width: '100%' }}>
+          {visibleItems}
         </div>
       </div>
 
@@ -138,7 +181,7 @@ export function TerminalOutput({ logs, isActive, onClose }: TerminalOutputProps)
   )
 }
 
-function TerminalLine({ line }: { line: { type: string, content: string } }) {
+function TerminalLine({ line, index, style }: { line: { type: string, content: string }, index: number, style: React.CSSProperties }) {
   const getPrefix = () => {
     switch (line.type) {
       case 'system': return <span className="text-cyber-accent">[SYS]</span>
@@ -151,13 +194,16 @@ function TerminalLine({ line }: { line: { type: string, content: string } }) {
     }
   }
 
+  // Deterministic pseudo time to prevent re-renders changing the time
+  const pseudoTime = String((10000 + index * 13) % 100000).padStart(5, '0')
+
   return (
-    <div className="flex gap-2 px-1">
-      <span className="text-cyber-textDim text-xs font-mono tabular-nums w-10 text-right">
-        {Math.floor(Date.now() / 1000) % 100000}
+    <div style={style} className="flex gap-2 px-1 items-center overflow-hidden">
+      <span className="text-cyber-textDim text-xs font-mono tabular-nums w-10 text-right flex-shrink-0">
+        {pseudoTime}
       </span>
       <span className="flex-shrink-0 px-2">{getPrefix()}</span>
-      <span className="text-cyber-text break-all whitespace-pre-wrap font-mono">{line.content}</span>
+      <span className="text-cyber-text truncate font-mono flex-1" title={line.content}>{line.content}</span>
     </div>
   )
 }

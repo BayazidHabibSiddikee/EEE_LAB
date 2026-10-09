@@ -27,6 +27,14 @@ sys.path.append(str(Path(__file__).parent.parent))
 from main import run_generation as run_labgen_generation
 from pipeline.verify import run_all_checks, extract_features, load_classifier, predict_classifier
 
+PROGRESS_STAGES = {
+    "generating schematic": (20, 10),
+    "generating netlist": (40, 10),
+    "running simulation": (60, 10),
+    "verifying": (80, 10),
+    "finalizing": (90, 5),
+}
+
 app = FastAPI(title="LabGen Cyberdeck API", version="2.4.1")
 
 # Rate Limiter Middleware

@@ -181,10 +181,7 @@ export function App() {
       <div className="flex-1 flex overflow-hidden relative">
         {/* Left Sidebar - Generator/Explorer */}
         {sidebarOpen && (
-          <div 
-            className="lg:hidden absolute inset-0 bg-black/50 z-20" 
-            onClick={() => setSidebarOpen(false)} 
-          />
+          <div className="lg:hidden absolute inset-0 bg-black/50 z-20" onClick={() => setSidebarOpen(false)} aria-hidden="true" tabIndex={-1} />
         )}
         <aside className={cn(
           'absolute lg:relative z-30 h-full w-full lg:w-96 flex-shrink-0 flex flex-col border-r border-cyber-border bg-cyber-surface',
@@ -294,19 +291,19 @@ export function App() {
 function SettingsPanel() {
   return (
     <div className="cyber-panel h-full overflow-y-auto">
-      <h3 className="font-display text-lg text-cyber-primary mb-6 flex items-center gap-2">
+      <h2 className="font-display text-lg text-cyber-primary mb-6 flex items-center gap-2">
         <Settings className="w-5 h-5" />
         SYSTEM CONFIGURATION
-      </h3>
+      </h2>
       <div className="space-y-6">
         <section>
-          <h4 className="font-display text-sm text-cyber-textDim mb-3 uppercase tracking-wider">LLM PROVIDER</h4>
+          <h3 className="font-display text-sm text-cyber-textDim mb-3 uppercase tracking-wider">LLM PROVIDER</h3>
           <div className="space-y-3">
             <ProviderConfig />
           </div>
         </section>
         <section>
-          <h4 className="font-display text-sm text-cyber-textDim mb-3 uppercase tracking-wider">VERIFICATION</h4>
+          <h3 className="font-display text-sm text-cyber-textDim mb-3 uppercase tracking-wider">VERIFICATION</h3>
           <div className="space-y-3">
             <label className="flex items-center gap-3 cursor-pointer">
               <input type="checkbox" className="w-4 h-4 accent-cyber-primary rounded border-cyber-border bg-cyber-bg" defaultChecked />
@@ -319,7 +316,7 @@ function SettingsPanel() {
           </div>
         </section>
         <section>
-          <h4 className="font-display text-sm text-cyber-textDim mb-3 uppercase tracking-wider">FREECAD</h4>
+          <h3 className="font-display text-sm text-cyber-textDim mb-3 uppercase tracking-wider">FREECAD</h3>
           <div className="space-y-3">
             <label className="flex items-center gap-3 cursor-pointer">
               <input type="checkbox" className="w-4 h-4 accent-cyber-primary rounded border-cyber-border bg-cyber-bg" defaultChecked />
@@ -376,10 +373,10 @@ function ReportDetailPanel({ report, onClose, onOpen }: { report: Report, onClos
   return (
     <div className="h-full flex flex-col">
       <div className="flex items-center justify-between p-4 border-b border-cyber-border">
-        <h3 className="font-display text-lg text-cyber-primary flex items-center gap-2">
+        <h2 className="font-display text-lg text-cyber-primary flex items-center gap-2">
           <FileText className="w-5 h-5" />
           REPORT DETAIL
-        </h3>
+        </h2>
         <button onClick={onClose} className="p-1 hover:bg-cyber-border rounded transition-colors">
           <X className="w-5 h-5 text-cyber-textDim hover:text-cyber-secondary" />
         </button>
@@ -387,7 +384,7 @@ function ReportDetailPanel({ report, onClose, onOpen }: { report: Report, onClos
       
       <div className="flex-1 overflow-y-auto p-4 space-y-6">
         <div className="cyber-panel">
-          <h4 className="font-display text-sm text-cyber-textDim mb-3 uppercase tracking-wider">METADATA</h4>
+          <h3 className="font-display text-sm text-cyber-textDim mb-3 uppercase tracking-wider">METADATA</h3>
           <dl className="grid grid-cols-2 gap-3 text-sm">
             <div><dt className="text-cyber-textDim">ID</dt><dd className="font-mono text-cyber-text">{report.id}</dd></div>
             <div><dt className="text-cyber-textDim">Experiment</dt><dd>{report.experiment}</dd></div>
@@ -400,10 +397,10 @@ function ReportDetailPanel({ report, onClose, onOpen }: { report: Report, onClos
         
         {report.verification && (
           <div className="cyber-panel">
-            <h4 className="font-display text-sm text-cyber-textDim mb-3 uppercase tracking-wider flex items-center gap-2">
+            <h3 className="font-display text-sm text-cyber-textDim mb-3 uppercase tracking-wider flex items-center gap-2">
               <Zap className="w-4 h-4 text-cyber-secondary" />
               VERIFICATION RESULT
-            </h4>
+            </h3>
             <div className="flex items-center gap-4">
               <div className={cn('flex items-center gap-2 px-4 py-2 rounded', report.verification.passed ? 'bg-green-500/10 border border-green-500/30' : 'bg-cyber-secondary/10 border border-cyber-secondary/30')}>
                 <CheckCircle className={cn('w-5 h-5', report.verification.passed ? 'text-green-400' : 'text-cyber-secondary')} />

@@ -1,3 +1,8 @@
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import remarkMath from 'remark-math';
+import rehypeKatex from 'rehype-katex';
+import 'katex/dist/katex.min.css';
 import { useState, useRef, useEffect } from 'react';
 import { cn } from '../../lib/utils';
 import { FileText, Code2, Box, Download, ChevronRight } from 'lucide-react';
@@ -127,15 +132,6 @@ export function CenterWorkspace({
 }
 
 function MarkdownPreview({ content, isGenerating }: { content: string; isGenerating: boolean }) {
-  const containerRef = useRef<HTMLDivElement>(null);
-  
-  // Simple markdown rendering (in production, use react-markdown + remark-gfm + katex)
-  useEffect(() => {
-    if (containerRef.current) {
-      containerRef.current.innerHTML = simpleMarkdownToHtml(content);
-    }
-  }, [content]);
-
   if (!content && !isGenerating) {
     return (
       <div className="flex items-center justify-center h-full text-slate-500">
@@ -150,43 +146,52 @@ function MarkdownPreview({ content, isGenerating }: { content: string; isGenerat
 
   return (
     <div 
-      ref={containerRef}
       className="h-full overflow-y-auto p-6 prose prose-invert prose-slate max-w-3xl mx-auto"
       style={{ fontFamily: 'Inter, system-ui, sans-serif' }}
     >
-      {isGenerating ? (
-        <div className="animate-pulse space-y-4">
-          <div className="h-8 bg-slate-800 rounded w-3/4"></div>
+      <ReactMarkdown
+        remarkPlugins={[remarkGfm, remarkMath]}
+        rehypePlugins={[rehypeKatex]}
+        components={{
+          pre({ node, inline, className, children, ...props }: any) {
+            return (
+              <pre className="bg-slate-900 rounded p-4 overflow-x-auto text-sm border border-slate-800" {...props}>
+                {children}
+              </pre>
+            )
+          },
+          code({ node, inline, className, children, ...props }: any) {
+            return inline ? (
+              <code className="bg-slate-800 rounded px-1.5 py-0.5 font-mono text-sm" {...props}>{children}</code>
+            ) : (
+              <code className="block font-mono text-sm" {...props}>{children}</code>
+            )
+          },
+          table({ node, ...props }: any) {
+            return (
+              <div className="overflow-x-auto my-4 border border-slate-700 rounded-lg">
+                <table className="w-full text-sm text-left divide-y divide-slate-700" {...props} />
+              </div>
+            )
+          },
+          th({ node, ...props }: any) {
+            return <th className="px-4 py-3 bg-slate-800 font-semibold" {...props} />
+          },
+          td({ node, ...props }: any) {
+            return <td className="px-4 py-2 border-t border-slate-800" {...props} />
+          }
+        }}
+      >
+        {content}
+      </ReactMarkdown>
+      
+      {isGenerating && (
+        <div className="animate-pulse space-y-4 mt-6">
           <div className="h-4 bg-slate-800 rounded w-full"></div>
           <div className="h-4 bg-slate-800 rounded w-5/6"></div>
           <div className="h-4 bg-slate-800 rounded w-4/6"></div>
-          <div className="h-32 bg-slate-800 rounded"></div>
         </div>
-      ) : (
-        <div dangerouslySetInnerHTML={{ __html: content || '' }} />
       )}
-    </div>
-  );
-}
-
-function CodeView({ content, isGenerating }: { content: string; isGenerating: boolean }) {
-  if (!content && !isGenerating) {
-    return (
-      <div className="flex items-center justify-center h-full text-slate-500">
-        <div className="text-center">
-          <Code2 className="w-16 h-16 mx-auto text-slate-700 mb-4" />
-          <p className="text-lg">No source available</p>
-          <p className="text-sm mt-1">Generate a report to view LaTeX/Markdown source</p>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="h-full overflow-hidden">
-      <pre className="h-full p-4 overflow-auto text-sm font-mono text-slate-100 bg-slate-950">
-        <code className="language-latex">{isGenerating ? '// Generating source...' : content || ''}</code>
-      </pre>
     </div>
   );
 }

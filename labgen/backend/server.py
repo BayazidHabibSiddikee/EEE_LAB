@@ -484,7 +484,7 @@ async def run_generation_with_progress(websocket: WebSocket, report_id: str, par
             if pdf_files:
                 assets.append({"type": "pdf", "path": str(pdf_files[0]), "label": "PDF Report"})
             
-            fcstd_files = list(run_dir.glob("*.FCStd"))
+            fcstd_files = list(run_dir.glob("*.FCStd")) + list(run_dir.glob("*.step")) + list(run_dir.glob("*.stl"))
             if fcstd_files:
                 assets.append({"type": "fcstd", "path": str(fcstd_files[0]), "label": "FreeCAD Model"})
             
@@ -561,7 +561,7 @@ async def get_report_asset(report_id: str, asset_path: str):
                     media_type = "text/plain"
                 elif asset_file.suffix in [".net", ".cir"]:
                     media_type = "text/plain"
-                elif asset_file.suffix == ".FCStd":
+                elif asset_file.suffix in [".FCStd", ".step", ".stl", ".obj"]:
                     media_type = "application/octet-stream"
                 return FileResponse(asset_file, media_type=media_type, filename=asset_file.name)
     raise HTTPException(status_code=404, detail="Asset not found")

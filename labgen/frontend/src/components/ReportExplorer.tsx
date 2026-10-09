@@ -185,11 +185,21 @@ function ReportItem({ report, isSelected, onSelect, onOpen, onDelete }: {
           <p className="text-xs text-cyber-textDim truncate">{report.experiment}</p>
         </div>
         <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-          <button onClick={(e) => { e.stopPropagation(); onOpen() }} className="p-1 hover:bg-cyber-border rounded text-cyber-textDim hover:text-cyber-primary" title="Open">
-            <Eye className="w-3 h-3" />
+          <button 
+            onClick={(e) => { e.stopPropagation(); onOpen() }} 
+            className="p-2 min-w-[44px] min-h-[44px] flex items-center justify-center hover:bg-cyber-border rounded text-cyber-textDim hover:text-cyber-primary" 
+            title="Open"
+            aria-label={`Open report ${report.name}`}
+          >
+            <Eye className="w-4 h-4" />
           </button>
-          <button onClick={(e) => { e.stopPropagation(); onDelete() }} className="p-1 hover:bg-cyber-border rounded text-cyber-textDim hover:text-cyber-secondary" title="Delete">
-            <Trash2 className="w-3 h-3" />
+          <button 
+            onClick={(e) => { e.stopPropagation(); onDelete() }} 
+            className="p-2 min-w-[44px] min-h-[44px] flex items-center justify-center hover:bg-cyber-border rounded text-cyber-textDim hover:text-cyber-secondary" 
+            title="Delete"
+            aria-label={`Delete report ${report.name}`}
+          >
+            <Trash2 className="w-4 h-4" />
           </button>
         </div>
       </div>

@@ -79,3 +79,13 @@
 - [ ] Replace Gemini with local model for all LLM calls (circuit, sections, semantics, FreeCAD agent)
 - [ ] Fine-tune on LabGen verified-good runs (report generation + circuit design)
 - [ ] Add MCP server for FluidSim/web-scraper/FreeCAD tool calling
+
+
+## Phase 10: Cyberdeck UI & Architecture Overhaul (Audit Remediation) 🔄 IN PROGRESS
+- [x] Security: Sandboxed `exec()` in `main.py` and restricted CORS in `server.py`
+- [x] Architecture: Configured `VITE_WS_URL`, added global React ErrorBoundary, debounced `localStorage` writes.
+- [x] Accessibility (P0): Removed 'AI-slop' aesthetic (scanlines, grid), added global `:focus-visible` ring, fixed `textDim` WCAG contrast.
+- [x] Responsive Design (P0): Overhauled fixed `w-96` sidebar to use responsive drawer pattern on mobile, removed boot screen.
+- [x] Performance (P0): Fixed terminal layout thrashing by replacing `scrollTop = scrollHeight` with `scrollIntoView()` on an invisible end marker.
+- [x] Accessibility (P1/P2): Add ARIA labels, improve touch targets > 44px, heading hierarchy.
+- [x] Polish (P3): Remove stray `console.log` statements, add test files, refine spacing.

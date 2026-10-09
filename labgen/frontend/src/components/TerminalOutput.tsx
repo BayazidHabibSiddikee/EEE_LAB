@@ -36,7 +36,8 @@ export function TerminalOutput({ logs, isActive, onClose }: TerminalOutputProps)
       <div className="fixed bottom-0 right-4 z-40 animate-in slide-in-from-bottom-4">
         <button 
           onClick={() => setIsMinimized(false)}
-          className="flex items-center gap-2 px-3 py-1.5 bg-cyber-surface border border-cyber-border rounded-lg shadow-lg hover:bg-cyber-border transition-colors"
+          aria-label="Restore terminal"
+          className="flex items-center gap-2 px-4 py-2 min-h-[44px] bg-cyber-surface border border-cyber-border rounded-lg shadow-lg hover:bg-cyber-border transition-colors"
         >
           <Terminal className="w-4 h-4 text-cyber-primary" />
           <span className="font-mono text-xs text-cyber-text">TERMINAL</span>
@@ -65,14 +66,29 @@ export function TerminalOutput({ logs, isActive, onClose }: TerminalOutputProps)
           </span>
         </div>
         <div className="flex items-center gap-1">
-          <button onClick={() => setIsMaximized(!isMaximized)} className="p-1.5 hover:bg-cyber-border rounded transition-colors" title={isMaximized ? 'Minimize' : 'Maximize'}>
-            {isMaximized ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
+          <button 
+            onClick={() => setIsMaximized(!isMaximized)} 
+            className="p-2 min-w-[44px] min-h-[44px] flex items-center justify-center hover:bg-cyber-border rounded transition-colors" 
+            title={isMaximized ? 'Minimize' : 'Maximize'}
+            aria-label={isMaximized ? 'Minimize terminal' : 'Maximize terminal'}
+          >
+            {isMaximized ? <Minimize2 className="w-5 h-5" /> : <Maximize2 className="w-5 h-5" />}
           </button>
-          <button onClick={() => setIsMinimized(true)} className="p-1.5 hover:bg-cyber-border rounded transition-colors" title="Minimize to tray">
-            <Minimize2 className="w-4 h-4 rotate-90" />
+          <button 
+            onClick={() => setIsMinimized(true)} 
+            className="p-2 min-w-[44px] min-h-[44px] flex items-center justify-center hover:bg-cyber-border rounded transition-colors" 
+            title="Minimize to tray"
+            aria-label="Minimize terminal to tray"
+          >
+            <Minimize2 className="w-5 h-5 rotate-90" />
           </button>
-          <button onClick={onClose} className="p-1.5 hover:bg-cyber-border rounded transition-colors" title="Close">
-            <X className="w-4 h-4" />
+          <button 
+            onClick={onClose} 
+            className="p-2 min-w-[44px] min-h-[44px] flex items-center justify-center hover:bg-cyber-border rounded transition-colors" 
+            title="Close"
+            aria-label="Close terminal"
+          >
+            <X className="w-5 h-5" />
           </button>
         </div>
       </div>

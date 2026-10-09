@@ -21,7 +21,7 @@ export function Header({ onMenuClick, onTerminalClick, connectionStatus, isGener
   return (
     <header className="h-14 border-b border-cyber-border bg-cyber-surface/80 backdrop-blur-sm flex items-center justify-between px-4 z-20">
       <div className="flex items-center gap-4">
-        <button onClick={onMenuClick} className="p-2 hover:bg-cyber-border rounded transition-colors lg:hidden" aria-label="Toggle sidebar">
+        <button onClick={onMenuClick} className="p-2 min-w-[44px] min-h-[44px] flex items-center justify-center hover:bg-cyber-border rounded transition-colors lg:hidden" aria-label="Toggle sidebar">
           <Menu className="w-5 h-5 text-cyber-text" />
         </button>
         
@@ -30,7 +30,7 @@ export function Header({ onMenuClick, onTerminalClick, connectionStatus, isGener
             <Brain className="w-5 h-5 text-cyber-bg" />
           </div>
           <div>
-            <div className="font-display text-xl font-bold text-cyber-primary tracking-wider">LAB<span className="text-cyber-secondary">GEN</span></div>
+            <h1 className="font-display text-xl font-bold text-cyber-primary tracking-wider">LAB<span className="text-cyber-secondary">GEN</span></h1>
             <div className="font-mono text-xs text-cyber-textDim tracking-widest">CYBERDECK TERMINAL v2.4.1</div>
           </div>
         </div>
@@ -54,7 +54,7 @@ export function Header({ onMenuClick, onTerminalClick, connectionStatus, isGener
         {/* Terminal Toggle */}
         <button 
           onClick={onTerminalClick}
-          className="p-2 hover:bg-cyber-border rounded transition-colors"
+          className="p-2 min-w-[44px] min-h-[44px] flex items-center justify-center hover:bg-cyber-border rounded transition-colors"
           aria-label="Toggle terminal"
         >
           <Terminal className="w-5 h-5 text-cyber-text hover:text-cyber-primary transition-colors" />

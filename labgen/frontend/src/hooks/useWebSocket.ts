@@ -38,7 +38,7 @@ export function useWebSocket(url: string = import.meta.env.VITE_WS_URL || 'ws://
       ws.onopen = () => {
         setConnectionStatus('connected')
         reconnectAttempts.current = 0
-        console.log('[WS] Connected to backend')
+        // Debug log removed for production
       }
 
       ws.onmessage = (event) => {
@@ -52,7 +52,7 @@ export function useWebSocket(url: string = import.meta.env.VITE_WS_URL || 'ws://
 
       ws.onclose = () => {
         setConnectionStatus('disconnected')
-        console.log('[WS] Disconnected')
+        // Debug log removed for production
         
         // Attempt reconnect with exponential backoff
         if (reconnectAttempts.current < maxReconnectAttempts) {

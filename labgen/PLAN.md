@@ -89,3 +89,8 @@
 - [x] Performance (P0): Fixed terminal layout thrashing by replacing `scrollTop = scrollHeight` with `scrollIntoView()` on an invisible end marker.
 - [x] Accessibility (P1/P2): Add ARIA labels, improve touch targets > 44px, heading hierarchy.
 - [x] Polish (P3): Remove stray `console.log` statements, add test files, refine spacing.
+## Phase 11: 3-Pane IDE Polish & Intervention Backend ✅ COMPLETED
+- [x] Wire real Markdown/LaTeX renderer (react-markdown + remark-math + rehype-katex)
+- [x] Three.js CAD viewer (native STL support, graceful fallback for WASM formats)
+- [x] Intervention backend: Connect `intervention_response` to pause/resume generation subprocess via SIGSTOP/SIGCONT and `asyncio.Event`
+- [x] Playwright E2E tests for the frontend generation flow

@@ -275,3 +275,14 @@ rank_bm25
 - `train_classifier.py` — LightGBM training (Kaggle/local)
 - `convert_store_docs.py` — PDF/DOCX → Markdown (uses web-scraper's markitdown)
 - `generate_synthetic_training.py` — Synthetic data for classifier
+## Phase 10: Cyberdeck UI & Architecture Overhaul (Web IDE)
+- Sandboxed `exec()` in `main.py` and restricted CORS in `server.py`
+- Added global React ErrorBoundary, debounced `localStorage` writes.
+- Responsive Drawer pattern for mobile and removed 'AI-slop' visual aesthetics.
+- Virtualized terminal output using `requestAnimationFrame` for high performance rendering.
+
+## Phase 11: 3-Pane IDE Polish & Intervention Backend
+- Live Markdown/LaTeX preview using `react-markdown`, `remark-math`, and `rehype-katex`.
+- Fully featured Three.js 3D CAD viewer for STL files with graceful fallback for WASM-required formats (STEP/FCStd).
+- Advanced Intervention Backend connecting `intervention_response` to pause/resume generation via OS signals (SIGSTOP/SIGCONT) and `asyncio.Event`.
+- Playwright End-to-End (E2E) UI test coverage.

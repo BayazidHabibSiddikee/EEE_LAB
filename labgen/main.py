@@ -61,14 +61,19 @@ def execute_dynamic_circuit(run_dir, exp_name, circuit_prompt):
     cir_path = os.path.join(run_dir, "dynamic.cir")
     txt_out = os.path.join(run_dir, "iv_data.txt")
 
-    netlist_content = f"Dynamic Circuit: {exp_name}\\n"
-    model_path = os.path.abspath("models/triac.sub").replace('\\', '/')
-    if "triac" in circuit_prompt.lower():
-        netlist_content += f'.include "{model_path}"\\n\\n'
+    netlist_content = f"Dynamic Circuit: {exp_name}\n"
+    triac_path = os.path.abspath("models/triac.sub").replace('\\', '/')
+    diac_path = os.path.abspath("models/diac.sub").replace('\\', '/')
+    netlist_str = str(circuit_json.get("netlist_components", [])).upper()
+    if "TRIAC" in netlist_str or "triac" in circuit_prompt.lower():
+        netlist_content += f'.include "{triac_path}"\n'
+    if "DIAC" in netlist_str or "diac" in circuit_prompt.lower():
+        netlist_content += f'.include "{diac_path}"\n'
+    netlist_content += "\n" 
 
-    netlist_content += "* Circuit\\n"
+    netlist_content += "* Circuit\n"
     for comp in circuit_json.get("netlist_components", []):
-        netlist_content += f"{comp}\\n"
+        netlist_content += f"{comp}\n"
 
     netlist_content += f"""
 * Analysis
@@ -90,8 +95,20 @@ def execute_dynamic_circuit(run_dir, exp_name, circuit_prompt):
     try:
         schemdraw_code = circuit_json.get("schemdraw_code", "")
         if schemdraw_code:
+            import schemdraw
+            import schemdraw.elements as elm
+            safe_builtins = {
+                'print': print, 'range': range, 'int': int, 'float': float,
+                'str': str, 'list': list, 'dict': dict, 'Exception': Exception,
+                'zip': zip, 'enumerate': enumerate, 'len': len
+            }
+            safe_globals = {
+                "__builtins__": safe_builtins,
+                "schemdraw": schemdraw,
+                "elm": elm
+            }
             local_vars = {}
-            exec(schemdraw_code, globals(), local_vars)
+            exec(schemdraw_code, safe_globals, local_vars)
             if 'draw_circuit' in local_vars:
                 local_vars['draw_circuit'](schem_path)
             else:
@@ -169,16 +186,65 @@ def run_generation(args, settings):
     txt_out = os.path.join(run_dir, "iv_data.txt")
     schem_path = os.path.join(run_dir, "figs", "schematic.png")
 
-    netlist_content = f"Dynamic Circuit: {args.name}\\n"
-    model_path = os.path.abspath("models/triac.sub").replace('\\', '/')
-    if "triac" in args.name.lower():
-        netlist_content += f'.include "{model_path}"\\n\\n'
+    netlist_content = f"Dynamic Circuit: {args.name}\n"
+    triac_path = os.path.abspath("models/triac.sub").replace('\\', '/')
+    diac_path = os.path.abspath("models/diac.sub").replace('\\', '/')
+    netlist_str = str(circuit_json.get("netlist_components", [])).upper()
+    if "TRIAC" in netlist_str or "triac" in args.name.lower():
+        netlist_content += f'.include "{triac_path}"\n'
+    if "DIAC" in netlist_str or "diac" in args.name.lower():
+        netlist_content += f'.include "{diac_path}"\n'
+    netlist_content += "\n" 
 
-    netlist_content += "* Circuit\\n"
+    netlist_content += "* Circuit\n"
     for comp in circuit_json.get("netlist_components", []):
-        netlist_content += f"{comp}\\n"
+        netlist_content += f"{comp}\n"
 
-    netlist_content += f"""
+
+    # Extract components and find a resistor to vary
+    comps = circuit_json.get("netlist_components", [])
+    var_res_idx = -1
+    for i, c in enumerate(comps):
+        if c.strip().upper().startswith("R"):
+            var_res_idx = i
+            break
+            
+    r_vals = ["1k", "5k", "10k"] if var_res_idx != -1 else ["1k"]
+    colors = ['b', 'r', 'g']
+    
+    import matplotlib.pyplot as plt
+    plt.figure(figsize=(8, 6))
+    plt.title(f"{args.name} Characteristics", fontsize=14)
+    plt.xlabel("Voltage (V)", fontsize=12)
+    plt.ylabel("Current (mA)", fontsize=12)
+    plt.grid(True, which='both', linestyle='--', linewidth=0.5)
+    plt.axhline(0, color='black', linewidth=1)
+    plt.axvline(0, color='black', linewidth=1)
+    
+    success_sim = False
+    
+    for r_idx, r_val in enumerate(r_vals):
+        loop_txt_out = txt_out.replace('.txt', f'_{r_idx}.txt')
+        
+        loop_netlist = f"Dynamic Circuit: {args.name}\n"
+        if "TRIAC" in netlist_str or "triac" in args.name.lower():
+            loop_netlist += f'.include "{triac_path}"\n'
+        if "DIAC" in netlist_str or "diac" in args.name.lower():
+            loop_netlist += f'.include "{diac_path}"\n'
+        loop_netlist += "\n* Circuit\n"
+        
+        for i, comp in enumerate(comps):
+            if i == var_res_idx:
+                parts = comp.split()
+                if len(parts) >= 4:
+                    parts[3] = r_val
+                    loop_netlist += " ".join(parts) + "\n"
+                else:
+                    loop_netlist += f"{comp}\n"
+            else:
+                loop_netlist += f"{comp}\n"
+                
+        loop_netlist += f"""
 * Analysis
 .dc V1 -15 15 0.1
 
@@ -186,18 +252,63 @@ def run_generation(args, settings):
     run
     let V_target = V(2)
     let I_target = -I(V1)
-    wrdata {txt_out} V_target I_target
+    wrdata {loop_txt_out} V_target I_target
 .endc
 .end
 """
-    with open(cir_path, 'w') as f:
-        f.write(netlist_content)
+        with open(cir_path, 'w') as f:
+            f.write(loop_netlist)
+            
+        res = subprocess.run(["ngspice", "-b", cir_path], capture_output=True)
+        if res.returncode == 0 and os.path.exists(loop_txt_out):
+            success_sim = True
+            try:
+                df = pd.read_csv(loop_txt_out, sep=r'\s+', header=None)
+                plt.plot(df[2], df[3] * 1000, linewidth=2, color=colors[r_idx % len(colors)], label=f"R={r_val}")
+            except Exception as e:
+                pass
 
+    if not success_sim:
+        print("Dynamic circuit failed, falling back to static triac circuit...")
+        cir_file, fb_txt_out = create_triac_netlist(run_dir)
+        subprocess.run(["ngspice", "-b", cir_file], capture_output=True)
+        try:
+            df = pd.read_csv(fb_txt_out, sep=r'\s+', header=None)
+            plt.plot(df[2], df[3] * 1000, linewidth=2, color='b', label="Fallback")
+            import shutil
+            shutil.copy(fb_txt_out, txt_out)
+        except Exception:
+            pass
+    else:
+        import shutil
+        try:
+            shutil.copy(txt_out.replace('.txt', '_0.txt'), txt_out)
+        except:
+            pass
+            
+    plot_path = os.path.join(run_dir, "figs", f"{slug}_plot.png")
+    plt.legend()
+    plt.tight_layout()
+    plt.savefig(plot_path, dpi=300)
+    plt.close()
+        
     try:
         schemdraw_code = circuit_json.get("schemdraw_code", "")
         if schemdraw_code:
+            import schemdraw
+            import schemdraw.elements as elm
+            safe_builtins = {
+                'print': print, 'range': range, 'int': int, 'float': float,
+                'str': str, 'list': list, 'dict': dict, 'Exception': Exception,
+                'zip': zip, 'enumerate': enumerate, 'len': len
+            }
+            safe_globals = {
+                "__builtins__": safe_builtins,
+                "schemdraw": schemdraw,
+                "elm": elm
+            }
             local_vars = {}
-            exec(schemdraw_code, globals(), local_vars)
+            exec(schemdraw_code, safe_globals, local_vars)
             if 'draw_circuit' in local_vars:
                 local_vars['draw_circuit'](schem_path)
             else:
@@ -207,30 +318,6 @@ def run_generation(args, settings):
     except Exception as e:
         print(f"Error executing schemdraw_code: {e}")
         draw_triac_circuit(schem_path)
-
-    cir_file = cir_path
-
-    print("Running ngspice simulation...")
-    subprocess.run(["ngspice", "-b", cir_file], capture_output=True)
-
-    print("Generating plots...")
-    plot_path = os.path.join(run_dir, "figs", f"{slug}_plot.png")
-    try:
-        df = pd.read_csv(txt_out, sep=r'\s+', header=None)
-        plt.figure(figsize=(8, 6))
-        plt.plot(df[2], df[3] * 1000, linewidth=2, color='b')
-        plt.title(f"{args.name} Characteristics", fontsize=14)
-        plt.xlabel("Voltage (V)", fontsize=12)
-        plt.ylabel("Current (mA)", fontsize=12)
-        plt.grid(True, which='both', linestyle='--', linewidth=0.5)
-        plt.axhline(0, color='black', linewidth=1)
-        plt.axvline(0, color='black', linewidth=1)
-        plt.tight_layout()
-        plt.savefig(plot_path, dpi=300)
-        plt.close()
-    except Exception as e:
-        print(f"Error plotting: {e}")
-        plot_path = ""
 
     print("Scraping theory reference images (if enabled)...")
     theory_img_path = ""
@@ -249,11 +336,16 @@ def run_generation(args, settings):
 
     data_table_latex = _build_data_table_from_simulation(txt_out)
 
+    def esc(t):
+        if isinstance(t, str): return t.replace('_', '\\_')
+        if isinstance(t, list): return [esc(x) for x in t]
+        return t
+
     sections = {
-        "objectives": llm_sections.get("objectives", []),
-        "theory": llm_sections.get("theory", ""),
-        "discussion": llm_sections.get("discussion", ""),
-        "conclusion": llm_sections.get("conclusion", ""),
+        "objectives": esc(llm_sections.get("objectives", [])),
+        "theory": esc(llm_sections.get("theory", "")),
+        "discussion": esc(llm_sections.get("discussion", "")),
+        "conclusion": esc(llm_sections.get("conclusion", "")),
         "procedure": [
             "Connect the circuit as per the experimental circuit diagram.",
             "Apply a constant gate current $I_G$.",
@@ -405,7 +497,7 @@ def run_verification(args, settings):
 
 def run_index(args, settings):
     from pipeline.rag import build_rag_index
-from pipeline.cad import design_cad_agent, get_rag_context
+    from pipeline.cad import design_cad_agent, get_rag_context
     if args.rebuild:
         print("Rebuilding RAG index...")
         build_rag_index(force_rebuild=True)

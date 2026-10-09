@@ -1,5 +1,5 @@
 import { Terminal, X, Trash2, Copy, Maximize2, Minimize2, Download } from 'lucide-react'
-import { useRef, useEffect } from 'react'
+import { useRef, useEffect, useState, useMemo } from 'react'
 import { cn } from '../lib/utils'
 
 interface TerminalOutputProps {
@@ -10,6 +10,7 @@ interface TerminalOutputProps {
 
 export function TerminalOutput({ logs, isActive, onClose }: TerminalOutputProps) {
   const terminalRef = useRef<HTMLDivElement>(null)
+  const endOfLogsRef = useRef<HTMLDivElement>(null)
   const [isMinimized, setIsMinimized] = useState(false)
   const [isMaximized, setIsMaximized] = useState(false)
 
@@ -25,8 +26,8 @@ export function TerminalOutput({ logs, isActive, onClose }: TerminalOutputProps)
   }, [logs])
 
   useEffect(() => {
-    if (terminalRef.current && !isMinimized) {
-      terminalRef.current.scrollTop = terminalRef.current.scrollHeight
+    if (!isMinimized && endOfLogsRef.current) {
+      endOfLogsRef.current.scrollIntoView({ behavior: 'auto' })
     }
   }, [logs, isMinimized])
 
@@ -92,6 +93,7 @@ export function TerminalOutput({ logs, isActive, onClose }: TerminalOutputProps)
             <span className="text-cyber-primary">$</span>
             <span className="w-4 h-5 bg-cyber-primary animate-pulse inline-block ml-1" />
           </div>
+          <div ref={endOfLogsRef} />
         </div>
       </div>
 

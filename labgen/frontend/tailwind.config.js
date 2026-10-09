@@ -9,16 +9,16 @@ export default {
     extend: {
       colors: {
         cyber: {
-          bg: '#0a0f1a',
-          surface: '#111827',
-          border: '#1f2937',
-          primary: '#00ffc8',
-          secondary: '#ff006e',
-          accent: '#7209b7',
-          warning: '#f72585',
-          text: '#e8f4fd',
-          textDim: '#6b7a9e',
-          scanline: 'rgba(0, 255, 200, 0.03)',
+          bg: '#0f172a',
+          surface: '#1e293b',
+          border: '#334155',
+          primary: '#3b82f6',
+          secondary: '#6366f1',
+          accent: '#8b5cf6',
+          warning: '#ef4444',
+          text: '#f8fafc',
+          textDim: '#94a3b8',
+          scanline: 'rgba(59, 130, 246, 0.03)',
         },
       },
       fontFamily: {

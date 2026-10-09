@@ -57,15 +57,9 @@ export function App() {
   const [generationLog, setGenerationLog] = useState<string[]>([])
   const [sidebarOpen, setSidebarOpen] = useState(true)
   const [terminalOpen, setTerminalOpen] = useState(true)
-  const [bootSequence, setBootSequence] = useState(true)
+  const [bootSequence, setBootSequence] = useState(false)
   
   const { sendMessage, lastMessage, connectionStatus } = useWebSocket()
-
-  // Boot sequence
-  useEffect(() => {
-    const timer = setTimeout(() => setBootSequence(false), 2000)
-    return () => clearTimeout(timer)
-  }, [])
 
   // Load reports from localStorage on mount
   useEffect(() => {
@@ -77,9 +71,12 @@ export function App() {
     }
   }, [])
 
-  // Save reports to localStorage
+  // Save reports to localStorage (debounced)
   useEffect(() => {
-    localStorage.setItem('labgen_reports', JSON.stringify(reports))
+    const timeoutId = setTimeout(() => {
+      localStorage.setItem('labgen_reports', JSON.stringify(reports))
+    }, 500)
+    return () => clearTimeout(timeoutId)
   }, [reports])
 
   const handleQuestionChange = (id: string, value: string | number) => {
@@ -170,12 +167,10 @@ export function App() {
   const toggleSidebar = () => setSidebarOpen(!sidebarOpen)
   const toggleTerminal = () => setTerminalOpen(!terminalOpen)
 
-  if (bootSequence) {
-    return <BootScreen />
-  }
+  // Boot sequence removed (Anti-pattern fix)
 
   return (
-    <div className="h-screen w-full flex flex-col overflow-hidden">
+    <div className="h-screen w-full flex flex-col overflow-hidden bg-cyber-bg text-cyber-text">
       <Header 
         onMenuClick={toggleSidebar}
         onTerminalClick={toggleTerminal}
@@ -183,12 +178,18 @@ export function App() {
         isGenerating={isGenerating}
       />
       
-      <div className="flex-1 flex overflow-hidden">
+      <div className="flex-1 flex overflow-hidden relative">
         {/* Left Sidebar - Generator/Explorer */}
+        {sidebarOpen && (
+          <div 
+            className="lg:hidden absolute inset-0 bg-black/50 z-20" 
+            onClick={() => setSidebarOpen(false)} 
+          />
+        )}
         <aside className={cn(
-          'w-96 flex-shrink-0 flex flex-col border-r border-cyber-border bg-cyber-surface/50',
-          'transition-all duration-300',
-          sidebarOpen ? 'translate-x-0' : '-translate-x-full'
+          'absolute lg:relative z-30 h-full w-full sm:w-96 flex-shrink-0 flex flex-col border-r border-cyber-border bg-cyber-surface',
+          'transition-transform duration-300',
+          sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0 lg:hidden'
         )}>
           <div className="flex-1 flex flex-col overflow-hidden">
             <nav className="flex border-b border-cyber-border px-4 py-2" role="tablist">
@@ -281,7 +282,7 @@ export function App() {
               onClose={() => setSelectedReport(null)}
               onOpen={openReport}
             />
-          </aside>}
+          </aside>
         )}
       </div>
     </div>
@@ -320,7 +321,7 @@ function BootScreen() {
     <div className="h-screen w-full flex items-center justify-center bg-cyber-bg relative overflow-hidden">
       <div className="fixed inset-0 bg-gradient-to-br from-cyber-bg via-cyber-surface to-cyber-bg" />
       <div className="fixed inset-0 bg-[radial-gradient(ellipse_at_center,rgba(0,255,200,0.05)_0%,transparent_70%)]" />
-      <div className="fixed inset-0" style={{ backgroundImage: 'linear-gradient(rgba(0,255,200,0.02) 1px, transparent 1px), linear-gradient(90deg, rgba(0,255,200,0.02) 1px, transparent 1px)', backgroundSize: '40px 40px' } />
+      <div className="fixed inset-0" style={{ backgroundImage: 'linear-gradient(rgba(0,255,200,0.02) 1px, transparent 1px), linear-gradient(90deg, rgba(0,255,200,0.02) 1px, transparent 1px)', backgroundSize: '40px 40px' }} />
       
       <div className="relative z-10 text-center max-w-2xl px-8">
         <div className="mb-12 animate-glitch">

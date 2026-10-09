@@ -18,7 +18,7 @@ interface WebSocketMessage {
   [key: string]: any
 }
 
-export function useWebSocket(url: string = 'ws://localhost:8000/ws') {
+export function useWebSocket(url: string = import.meta.env.VITE_WS_URL || 'ws://localhost:8000/ws') {
   const [lastMessage, setLastMessage] = useState<WebSocketMessage | null>(null)
   const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>('disconnected')
   const wsRef = useRef<WebSocket | null>(null)

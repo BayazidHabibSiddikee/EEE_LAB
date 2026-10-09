@@ -2,6 +2,49 @@
 
 LabGen is an automated pipeline for generating **and verifying** Electrical and Electronic Engineering (EEE) laboratory reports in PDF format. It uses LLMs for intelligent drafting, ngspice for circuit simulation, LaTeX for high-quality PDF rendering, **OCR for scanned documents**, **FreeCAD for 3D design validation**, and a **LightGBM classifier** for automated quality checking.
 
+
+## 🖥️ Cyberdeck GUI (Web & Tauri Desktop)
+
+LabGen now includes a fully responsive, highly accessible, and secure "Cyberdeck" UI built with React, Tailwind CSS, FastAPI, and Tauri.
+
+### Run the Backend (FastAPI + WebSockets)
+```bash
+cd labgen
+python backend/server.py
+# Runs on http://localhost:8000
+```
+
+### Run the Frontend (Web)
+```bash
+cd labgen/frontend
+npm install
+npm run dev
+# Runs on http://localhost:5173
+```
+
+### Run the Desktop App (Tauri)
+```bash
+cd labgen/frontend
+npm run tauri dev
+```
+
+### UI Features
+- **Cyberdeck Aesthetic:** Custom Tailwind theme with a clean, professional dark mode UI.
+- **Accessibility (WCAG Compliant):** Full keyboard navigation support, visible focus rings, ARIA labels, semantic heading hierarchy, and `prefers-reduced-motion` respect.
+- **Performance:** Virtualized terminal logs using `requestAnimationFrame`, debounced LocalStorage state, and minimal production bundles.
+- **Security Hardened:** 
+  - Strict Content Security Policy (CSP) in Tauri.
+  - Safe shell execution constraints (restricted args).
+  - API Key authentication and rate limiting on the FastAPI backend.
+  - AST parsing for LLM-generated `schemdraw` code to prevent arbitrary execution.
+
+### Tests
+```bash
+cd labgen/frontend
+npm run test
+```
+Vitest component testing for critical UI functionality (virtualization, form validation, routing).
+
 ## Features
 
 - **Dynamic Circuit Generation:** Provide a natural language prompt, and the LLM designs the circuit, generates a netlist for `ngspice`, and draws the schematic using `schemdraw`.

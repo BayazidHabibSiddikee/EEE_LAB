@@ -19,6 +19,8 @@ success() { echo -e "${GREEN}[OK]${NC} $1"; }
 warn() { echo -e "${YELLOW}[WARN]${NC} $1"; }
 error() { echo -e "${RED}[ERROR]${NC} $1"; }
 
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
 # Check system dependencies
 check_deps() {
     log "Checking system dependencies..."
@@ -35,20 +37,14 @@ check_deps() {
 
 # Setup Python environment
 setup_python() {
-    log "Setting up Python environment..."
+    log "Using marin_venv Python environment..."
     
-    cd "$(dirname "$0")/backend"
+    cd "$ROOT_DIR/backend"
     
-    if [ ! -d "venv" ]; then
-        log "Creating virtual environment..."
-        python3 -m venv venv
-    fi
+    source /home/sword/marin_venv/bin/activate
     
-    source venv/bin/activate
-    
-    log "Installing Python dependencies..."
-    pip install --upgrade pip > /dev/null 2>&1
-    pip install -r requirements.txt > /dev/null 2>&1
+    log "Verifying Python dependencies..."
+    pip install -r requirements.txt
     
     success "Python environment ready"
 }
@@ -57,7 +53,7 @@ setup_python() {
 build_frontend() {
     log "Building frontend..."
     
-    cd "$(dirname "$0")/frontend"
+    cd "$ROOT_DIR/frontend"
     
     if [ ! -d "node_modules" ]; then
         log "Installing npm dependencies..."
@@ -74,7 +70,7 @@ build_frontend() {
 init_rag() {
     log "Initializing RAG index..."
     
-    cd "$(dirname "$0")"
+    cd "$ROOT_DIR"
     
     python3 -c "
 import sys
@@ -90,11 +86,11 @@ build_rag_index()
 start_backend() {
     log "Starting backend server..."
     
-    cd "$(dirname "$0")/backend"
-    source venv/bin/activate
+    cd "$ROOT_DIR/backend"
+    source /home/sword/marin_venv/bin/activate
     
     # Run in background
-    nohup python -m uvicorn main:app --host 0.0.0.0 --port 8000 > backend.log 2>&1 &
+    nohup python -m uvicorn server:app --host 0.0.0.0 --port 8000 > backend.log 2>&1 &
     BACKEND_PID=$!
     
     # Wait for server to start
@@ -113,7 +109,7 @@ start_backend() {
 start_frontend_dev() {
     log "Starting frontend dev server..."
     
-    cd "$(dirname "$0")/frontend"
+    cd "$ROOT_DIR/frontend"
     
     nohup npm run dev > frontend.log 2>&1 &
     FRONTEND_PID=$!

@@ -6,6 +6,7 @@ import {
 import { useState, useMemo } from 'react'
 import { cn } from '../lib/utils'
 import { Report } from '../../App'
+import { REPORT_STATUS } from '../lib/constants'
 
 interface ReportExplorerProps {
   reports: Report[]
@@ -32,7 +33,7 @@ export function ReportExplorer({ reports, selectedReport, onSelect, onDelete, on
   const groupedReports = useMemo(() => {
     const groups: Record<string, Report[]> = {}
     filteredReports.forEach(report => {
-      const date = new Date(report.createdAt).toLocaleDateString()
+      const date = new Date(report.createdAt).toISOString().split('T')[0]
       if (!groups[date]) groups[date] = []
       groups[date].push(report)
     })
@@ -123,9 +124,9 @@ export function ReportExplorer({ reports, selectedReport, onSelect, onDelete, on
                     key={report.id}
                     report={report}
                     isSelected={selectedReport?.id === report.id}
-                    onSelect={() => onSelect(report)}
-                    onOpen={() => onOpen(report)}
-                    onDelete={() => onDelete(report.id)}
+                    onSelect={onSelect}
+                    onOpen={onOpen}
+                    onDelete={onDelete}
                   />
                 ))}
               </div>
@@ -159,19 +160,11 @@ export function ReportExplorer({ reports, selectedReport, onSelect, onDelete, on
 function ReportItem({ report, isSelected, onSelect, onOpen, onDelete }: {
   report: Report
   isSelected: boolean
-  onSelect: () => void
-  onOpen: () => void
-  onDelete: () => void
+  onSelect: (report: Report) => void
+  onOpen: (report: Report) => void
+  onDelete: (id: string) => void
 }) {
-  const statusConfig = {
-    idle: { icon: '⏸', color: 'text-cyber-textDim' },
-    generating: { icon: '⟳', color: 'text-cyber-primary animate-pulse' },
-    verifying: { icon: '🧠', color: 'text-cyber-accent' },
-    complete: { icon: '✓', color: 'text-green-400' },
-    error: { icon: '✗', color: 'text-cyber-secondary' },
-  }
-
-  const config = statusConfig[report.status]
+  const config = REPORT_STATUS[report.status]
 
   return (
     <div>
@@ -179,7 +172,7 @@ function ReportItem({ report, isSelected, onSelect, onOpen, onDelete }: {
         'group file-item flex items-center justify-between w-full pr-2',
         isSelected && 'active'
       )}>
-        <button className="flex items-center gap-2 flex-1 text-left min-w-0 py-2" onClick={onSelect} aria-label={`Select report ${report.name}`}>
+        <button className="flex items-center gap-2 flex-1 text-left min-w-0 py-2" onClick={() => onSelect(report)} aria-label={`Select report ${report.name}`}>
           <span className={cn('text-lg', config.color)}>{config.icon}</span>
           <div className="flex-1 min-w-0">
             <p className="font-mono text-sm truncate">{report.name}</p>
@@ -188,7 +181,7 @@ function ReportItem({ report, isSelected, onSelect, onOpen, onDelete }: {
         </button>
         <div className="flex items-center gap-1 opacity-0 group-[.active]:opacity-100 lg:group-hover:opacity-100 transition-opacity focus-within:opacity-100">
           <button 
-            onClick={(e) => { e.stopPropagation(); onOpen() }} 
+            onClick={(e) => { e.stopPropagation(); onOpen(report) }} 
             className="p-2 min-w-[44px] min-h-[44px] flex items-center justify-center hover:bg-cyber-border rounded text-cyber-textDim hover:text-cyber-primary" 
             title="Open"
             aria-label={`Open report ${report.name}`}
@@ -196,7 +189,7 @@ function ReportItem({ report, isSelected, onSelect, onOpen, onDelete }: {
             <Eye className="w-4 h-4" />
           </button>
           <button 
-            onClick={(e) => { e.stopPropagation(); onDelete() }} 
+            onClick={(e) => { e.stopPropagation(); onDelete(report.id) }} 
             className="p-2 min-w-[44px] min-h-[44px] flex items-center justify-center hover:bg-cyber-border rounded text-cyber-textDim hover:text-cyber-secondary" 
             title="Delete"
             aria-label={`Delete report ${report.name}`}

@@ -331,10 +331,12 @@ async def run_generation_with_progress(websocket: WebSocket, report_id: str, par
                 continue
                 
             # Heuristic progress updating
-            if "RAG" in line_str: progress = min(30, progress + 5)
-            elif "Circuit" in line_str: progress = min(50, progress + 5)
-            elif "Report" in line_str: progress = min(70, progress + 5)
-            elif "verification" in line_str.lower(): progress = min(90, progress + 5)
+            line_lower = line_str.lower()
+            for stage, (max_val, step) in PROGRESS_STAGES.items():
+                if stage in line_lower:
+                    progress = min(max_val, progress + step)
+                    break
+
             
             await websocket.send_text(json.dumps({
                 "type": "progress",

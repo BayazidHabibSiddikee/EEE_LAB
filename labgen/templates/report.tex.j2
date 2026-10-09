@@ -139,11 +139,13 @@
 {{ sections.data_table_latex }}
 
 {% for plot in plots %}
+{% if plot.path %}
 \begin{figure}[H]
     \centering
     \includegraphics[width=0.8\textwidth]{ {{- plot.path -}} }
     \caption{ {{ plot.caption }} }
 \end{figure}
+{% endif %}
 {% endfor %}
 
 \section{Discussion}

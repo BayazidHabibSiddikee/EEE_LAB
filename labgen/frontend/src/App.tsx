@@ -12,6 +12,7 @@ import { StatusBar } from './components/StatusBar'
 import { Header } from './components/Header'
 import { useWebSocket, WebSocketMessage } from './hooks/useWebSocket'
 import { cn } from './lib/utils'
+import { REPORT_STATUS } from './lib/constants'
 
 interface Report {
   id: string
@@ -57,7 +58,6 @@ export function App() {
   const [generationLog, setGenerationLog] = useState<string[]>([])
   const [sidebarOpen, setSidebarOpen] = useState(true)
   const [terminalOpen, setTerminalOpen] = useState(true)
-  const [bootSequence, setBootSequence] = useState(false)
   
   const { sendMessage, lastMessage, connectionStatus } = useWebSocket()
 
@@ -187,14 +187,15 @@ export function App() {
           />
         )}
         <aside className={cn(
-          'absolute lg:relative z-30 h-full w-full sm:w-96 flex-shrink-0 flex flex-col border-r border-cyber-border bg-cyber-surface',
+          'absolute lg:relative z-30 h-full w-full lg:w-96 flex-shrink-0 flex flex-col border-r border-cyber-border bg-cyber-surface',
           'transition-transform duration-300',
-          sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0 lg:hidden'
+          sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0 lg:block'
         )}>
           <div className="flex-1 flex flex-col overflow-hidden">
-            <nav className="flex border-b border-cyber-border px-4 py-2" role="tablist">
+            <nav className="flex border-b border-cyber-border px-4 py-2" role="tablist" aria-label="Sidebar Views">
               <button
                 role="tab"
+                aria-controls="generator-panel"
                 aria-selected={currentView === 'generator'}
                 onClick={() => setCurrentView('generator')}
                 className={cn(
@@ -276,7 +277,7 @@ export function App() {
 
         {/* Right Sidebar - Report Detail (when selected) */}
         {selectedReport && !terminalOpen && (
-          <aside className="w-96 flex-shrink-0 border-l border-cyber-border bg-cyber-surface/50 animate-in slide-in-from-right">
+          <aside className="absolute right-0 inset-y-0 z-20 w-full lg:w-96 lg:relative flex-shrink-0 border-l border-cyber-border bg-cyber-surface/95 lg:bg-cyber-surface/50 backdrop-blur lg:backdrop-blur-none animate-in slide-in-from-right shadow-2xl lg:shadow-none">
             <ReportDetailPanel 
               report={selectedReport} 
               onClose={() => setSelectedReport(null)}
@@ -289,75 +290,6 @@ export function App() {
   )
 }
 
-function BootScreen() {
-  const [lines, setLines] = useState<string[]>([])
-  const bootLines = [
-    'INITIALIZING CYBERDECK TERMINAL v2.4.1...',
-    'LOADING NEURAL INTERFACE MODULES...',
-    'ESTABLISHING QUANTUM ENTANGLEMENT WITH BACKEND...',
-    'CALIBRATING HOLOGRAPHIC DISPLAY MATRIX...',
-    'VERIFYING CRYPTOGRAPHIC HANDSHAKE PROTOCOLS...',
-    'LOADING LABGEN KNOWLEDGE BASE (73 DOCUMENTS)...',
-    'INITIALIZING LIGHTGBM CLASSIFIER (22 FEATURES)...',
-    'CONNECTING TO FREECAD HEADLESS EXECUTOR...',
-    'SYNCING RAG+BM25 INDEX (293 CHUNKS)...',
-    'SYSTEM READY. AWAITING COMMAND.',
-  ]
-
-  useEffect(() => {
-    let i = 0
-    const interval = setInterval(() => {
-      if (i < bootLines.length) {
-        setLines(prev => [...prev, bootLines[i]])
-        i++
-      } else {
-        clearInterval(interval)
-      }
-    }, 150)
-    return () => clearInterval(interval)
-  }, [])
-
-  return (
-    <div className="h-screen w-full flex items-center justify-center bg-cyber-bg relative overflow-hidden">
-      <div className="fixed inset-0 bg-gradient-to-br from-cyber-bg via-cyber-surface to-cyber-bg" />
-      <div className="fixed inset-0 bg-[radial-gradient(ellipse_at_center,rgba(0,255,200,0.05)_0%,transparent_70%)]" />
-      <div className="fixed inset-0" style={{ backgroundImage: 'linear-gradient(rgba(0,255,200,0.02) 1px, transparent 1px), linear-gradient(90deg, rgba(0,255,200,0.02) 1px, transparent 1px)', backgroundSize: '40px 40px' }} />
-      
-      <div className="relative z-10 text-center max-w-2xl px-8">
-        <div className="mb-12 animate-glitch">
-          <div className="font-display text-6xl md:text-8xl font-bold text-cyber-primary tracking-wider mb-4">
-            LAB<span className="text-cyber-secondary">GEN</span>
-          </div>
-          <div className="font-display text-xl text-cyber-textDim tracking-widest">
-            CYBERDECK TERMINAL // v2.4.1
-          </div>
-        </div>
-        
-        <div className="cyber-panel max-w-xl mx-auto text-left">
-          <div className="font-mono text-sm space-y-1">
-            {lines.map((line, i) => (
-              <div key={i} className="flex items-center gap-3 animate-in fade-in slide-in-from-left-4 duration-300" style={{ animationDelay: `${i * 150}ms` }}>
-                <span className="text-cyber-primary">[OK]</span>
-                <span className="text-cyber-text">{line}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-        
-        <div className="mt-12 flex items-center justify-center gap-4 text-cyber-textDim text-sm">
-          <span className="flex items-center gap-1">
-            <Zap className="w-4 h-4 text-cyber-primary animate-pulse" />
-            POWERED BY QUANTUM NEURAL NETWORKS
-          </span>
-          <span className="flex items-center gap-1">
-            <Network className="w-4 h-4 text-cyber-accent" />
-            DISTRIBUTED COMPUTE CLUSTER
-          </span>
-        </div>
-      </div>
-    </div>
-  )
-}
 
 function SettingsPanel() {
   return (
@@ -503,17 +435,15 @@ function ReportDetailPanel({ report, onClose, onOpen }: { report: Report, onClos
 }
 
 function StatusBadge({ status }: { status: Report['status'] }) {
-  const configs = {
-    idle: { bg: 'bg-cyber-textDim/10 text-cyber-textDim', icon: <Zap className="w-3 h-3" /> },
-    generating: { bg: 'bg-cyber-primary/10 text-cyber-primary animate-pulse', icon: <RotateCcw className="w-3 h-3 animate-spin" /> },
-    verifying: { bg: 'bg-cyber-accent/10 text-cyber-accent', icon: <Brain className="w-3 h-3 animate-pulse" /> },
-    complete: { bg: 'bg-green-400/10 text-green-400', icon: <CheckCircle className="w-3 h-3" /> },
-    error: { bg: 'bg-cyber-secondary/10 text-cyber-secondary', icon: <AlertTriangle className="w-3 h-3" /> },
-  }
-  const config = configs[status]
+  const config = REPORT_STATUS[status]
+  const Icon = status === 'idle' ? Zap : 
+               status === 'generating' ? RotateCcw :
+               status === 'verifying' ? Brain :
+               status === 'complete' ? CheckCircle : AlertTriangle;
   return (
     <span className={cn('inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-mono', config.bg)}>
-      {config.icon} {status.toUpperCase()}
+      <Icon className={cn("w-3 h-3", status === 'generating' ? "animate-spin" : status === 'verifying' ? "animate-pulse" : "")} />
+      {config.label}
     </span>
   )
 }

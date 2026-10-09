@@ -63,53 +63,9 @@ If no violations, return {{"violations": []}}.
     return prompt
 
 def _call_llm(prompt: str, settings: Dict) -> Dict:
-    provider = settings.get("llm", {}).get("provider", "custom")
-    base_url = settings.get("llm", {}).get("base_url", "")
-    api_key = settings.get("llm", {}).get("api_key", "")
-    model = settings.get("llm", {}).get("model", "")
-    temperature = settings.get("llm", {}).get("temperature", 0.1)
-
-    if not api_key or api_key == "YOUR_API_KEY":
-        return {"violations": [], "error": "No API key configured"}
-
+    from pipeline.llm import call_llm
     try:
-        import requests
-        headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
-        if "openai" in base_url or "localhost" in base_url or "127.0.0.1" in base_url:
-            payload = {
-                "model": model,
-                "messages": [
-                    {"role": "system", "content": "You are a precise EEE lab report verifier. Output only valid JSON."},
-                    {"role": "user", "content": prompt}
-                ],
-                "temperature": temperature,
-                "response_format": {"type": "json_object"}
-            }
-        else:
-            payload = {
-                "contents": [{"parts": [{"text": prompt}]}],
-                "generationConfig": {"temperature": temperature, "responseMimeType": "application/json"}
-            }
-            headers = {"Content-Type": "application/json", "x-goog-api-key": api_key}
-
-        resp = requests.post(base_url, headers=headers, json=payload, timeout=60)
-        resp.raise_for_status()
-        data = resp.json()
-
-        if "choices" in data:
-            text = data["choices"][0]["message"]["content"]
-        elif "candidates" in data:
-            text = data["candidates"][0]["content"]["parts"][0]["text"]
-        else:
-            text = str(data)
-
-        if text.startswith("```json"):
-            text = text[7:]
-        if text.startswith("```"):
-            text = text[3:]
-        if text.endswith("```"):
-            text = text[:-3]
-        return json.loads(text.strip())
+        return call_llm("You are a precise EEE lab report verifier. Output only valid JSON.", prompt, response_json=True)
     except Exception as e:
         return {"violations": [], "error": str(e)}
 

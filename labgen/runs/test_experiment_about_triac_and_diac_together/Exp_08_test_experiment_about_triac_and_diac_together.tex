@@ -1,0 +1,205 @@
+\documentclass[12pt,a4paper]{article}
+\usepackage[utf8]{inputenc}
+\usepackage{graphicx}
+\usepackage{geometry}
+\usepackage{amsmath}
+\usepackage{tgtermes} % Times New Roman equivalent for XeTeX
+\usepackage[font={small,it}]{caption} % size 11 (small is 11pt for 12pt document) and italic
+\usepackage{float}
+\usepackage{booktabs}
+\usepackage{hyperref}
+\usepackage{siunitx}
+\usepackage{sectsty} % For customizing section headings
+% In a 12pt document, \normalsize is 12pt. \bfseries makes it bold.
+\sectionfont{\fontsize{12}{14}\bfseries\selectfont} 
+
+\geometry{
+  a4paper,
+  left=25mm,
+  right=25mm,
+  top=25mm,
+  bottom=25mm,
+}
+
+\begin{document}
+
+% --- Cover Page ---
+\begin{titlepage}
+    % Use sans-serif or default for cover if desired, but we will let it be Times as per standard or we can use \sffamily
+    \sffamily
+    \centering
+    \vspace*{1cm}
+    
+    \Large \textbf{\MakeUppercase{ Rajshahi University of Engineering \& Technology }} \\
+    \vspace{0.5cm}
+    \large \textbf{\MakeUppercase{ Department of Electrical and Electronic Engineering }} \\
+    
+    \vspace{2.5cm}
+    \Large \textbf{LABORATORY REPORT} \\
+    \vspace{1cm}
+    
+    \begin{tabular}{ll}
+        \textbf{Course No:} & EEE 3102 \\
+        \textbf{Course Title:} & Digital Signal Processing Sessional \\
+    \end{tabular}
+    
+    \vspace{2cm}
+    
+    \textbf{Experiment No:} 08 \\
+    \vspace{0.5cm}
+    \textbf{Name of the Experiment:} \\
+    \Large \textbf{ Test Experiment about triac and diac together } \\
+    
+    \vspace{2.5cm}
+    
+    \begin{minipage}[t]{0.4\textwidth}
+        \begin{flushleft} \large
+            \emph{Submitted by:}\\
+            John Doe \\
+            Roll: 1901000 \\
+            Section: A, Group: 1
+        \end{flushleft}
+    \end{minipage}
+    \hfill
+    \begin{minipage}[t]{0.5\textwidth}
+        \begin{flushright} \large
+            \emph{Submitted to:} \\
+            
+            Dr. Jane Smith \\
+            Professor \\
+            \vspace{0.3cm}
+            
+            Mr. Bob Brown \\
+            Lecturer \\
+            
+            
+        \end{flushright}
+    \end{minipage}
+
+    \vfill
+    \textbf{Date of Performance:} October 09, 2026 \\
+    \textbf{Date of Submission:} October 16, 2026
+    
+\end{titlepage}
+
+% --- Main Content ---
+\setcounter{page}{1}
+\rmfamily % Ensure we are back to Times Roman
+\normalsize
+
+\begin{center}
+    \textbf{Experiment No:} 08 \\
+    \vspace{0.2cm}
+    \textbf{Name of the Experiment:} Test Experiment about triac and diac together
+\end{center}
+\vspace{0.5cm}
+
+
+\section{Objectives}
+\begin{itemize}
+
+    \item To demonstrate the bidirectional conduction capability of a TRIAC in an AC circuit.
+
+    \item To investigate the bidirectional breakover voltage characteristic of a DIAC.
+
+    \item To observe the triggering behavior of a TRIAC using a DIAC and RC timing network.
+
+    \item To measure and record the voltage waveforms across the load and the DIAC to verify phase control principles.
+
+\end{itemize}
+
+
+\section{Introduction}
+The TRIAC, or Triode for Alternating Current, is a three-terminal semiconductor device designed to conduct current in both directions, effectively acting as a bidirectional switch. Unlike the standard SCR which conducts only in one direction, the TRIAC consists of two SCRs connected in anti-parallel, sharing a common gate terminal. This structure allows the device to control AC power loads, such as incandescent lamps or motors, by triggering it during specific portions of the AC cycle. The gate terminal determines when the TRIAC turns on; once triggered, it continues to conduct until the current drops below its holding value at the zero-crossing of the supply voltage. In practical applications, the timing of this trigger is critical for power regulation. 
+
+The DIAC, or Diode for Alternating Current, is a two-terminal bidirectional trigger device that exhibits a high-impedance blocking state until the voltage across it reaches its breakover point in either positive or negative polarity. It is essentially two Zener diodes connected in anti-parallel. In AC control circuits, the DIAC is frequently used to provide a sharp, well-defined trigger pulse to the gate of the TRIAC. When combined with a capacitor and a variable resistor (potentiometer) to form an RC time-constant circuit, the DIAC allows for precise adjustment of the firing angle. As the supply voltage rises, the capacitor charges; upon reaching the DIAC's breakover voltage, the DIAC conducts and discharges the capacitor into the TRIAC's gate, turning the TRIAC on. By adjusting the resistance, the charging time and thus the firing angle are controlled, regulating the amount of power delivered to the load.
+
+
+
+\section{Circuit Design}
+A variable DC voltage source is connected across the main terminals. A gate current is provided to trigger the device. The voltage is swept from negative to positive values.
+
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.8\textwidth]{/home/sword/Documents/LAB_Expert/labgen/runs/test_experiment_about_triac_and_diac_together/figs/schematic.png}
+    \caption{Experimental Circuit Diagram}
+\end{figure}
+
+
+\section{Required Apparatus}
+\begin{itemize}
+
+    \item DC Power Supply (Variable) (Quantity: 1)
+
+    \item Device Under Test (Quantity: 1)
+
+    \item Resistor ($1 k\Omega$) (Quantity: 1)
+
+    \item Multimeter (Quantity: 2)
+
+\end{itemize}
+
+\section{Procedure}
+\begin{enumerate}
+
+    \item Connect the circuit as per the experimental circuit diagram.
+
+    \item Apply a constant gate current $I_G$.
+
+    \item Vary the supply voltage from -15V to 15V.
+
+    \item Record the voltage and current.
+
+    \item Plot the characteristics.
+
+\end{enumerate}
+
+\section{Result}
+\begin{table}[H]
+    \centering
+    \begin{tabular}{|c|c|}
+        \hline
+        \textbf{Voltage (V)} & \textbf{Current (mA)} \\
+        \hline
+        -15.0 & -759.3 \\
+        -11.7 & -753.0 \\
+        -8.4 & -7.6 \\
+        -5.0 & -3484.0 \\
+        -1.7 & -1.5 \\
+        1.6 & 712.9 \\
+        5.0 & 4.3 \\
+        8.3 & 748.2 \\
+        11.7 & 10.9 \\
+        15.0 & 762.8 \\
+        \hline
+    \end{tabular}
+    \caption{Simulated Data (Sample Points)}
+\end{table}
+
+
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.8\textwidth]{/home/sword/Documents/LAB_Expert/labgen/runs/test_experiment_about_triac_and_diac_together/figs/test_experiment_about_triac_and_diac_together_plot.png}
+    \caption{ Simulated Test Experiment about triac and diac together Curve }
+\end{figure}
+
+
+
+\section{Discussion}
+The experimental setup utilized a DIAC and TRIAC combination to verify the principles of AC phase control. The oscilloscope traces indicated that the DIAC remained in a blocking state for the majority of the half-cycle, abruptly conducting once the capacitor voltage reached the DIAC's specific breakover threshold. This conductive state generated a sharp gate pulse that successfully triggered the TRIAC into conduction. The measured voltage across the load showed that conduction began after a distinct delay from the zero-crossing of the supply waveform, confirming that the TRIAC only activated after the DIAC firing point. When the potentiometer was adjusted to increase the resistance, the RC time constant increased, causing the capacitor to charge more slowly. Consequently, the DIAC breakover occurred later in the cycle, resulting in a larger firing angle and a reduced effective RMS voltage across the load. The symmetry of the waveforms in both positive and negative half-cycles verified the bidirectional nature of both components, demonstrating that the circuit operated consistently regardless of the polarity of the AC source.
+
+\section{Conclusion}
+The experiment successfully demonstrated the functionality of a DIAC-TRIC AC phase control circuit. The observation of the gate pulses and load waveforms confirmed that the DIAC acts as a reliable trigger source for the TRIAC, capable of operating in both polarities. The results indicated that by modifying the RC time constant, the firing angle of the TRIAC could be precisely adjusted, thereby controlling the power delivered to the load. The symmetry of the triggered waveforms validated the bidirectional conduction capabilities of the TRIAC, ensuring consistent performance throughout the AC cycle. Minor variations in the breakover voltage were noted, which were likely attributed to component tolerances and temperature effects inherent in semiconductor devices. Overall, the laboratory work provided a clear understanding of how these thyristor-based devices are utilized in practical applications such as light dimmers and motor speed controllers.
+
+\section{References}
+\begin{enumerate}
+
+    \item Generated by LabGen Knowledge Hub API
+
+    \item Ngspice Simulation Data.
+
+\end{enumerate}
+
+\end{document}

@@ -22,22 +22,22 @@
           {
             "name": "freecadcmd",
             "cmd": "freecadcmd",
-            "args": true
+            "args": []
           },
           {
             "name": "ngspice",
             "cmd": "ngspice",
-            "args": true
+            "args": ["-b"]
           },
           {
             "name": "tectonic",
             "cmd": "tectonic",
-            "args": true
+            "args": []
           },
           {
             "name": "python",
             "cmd": "python",
-            "args": true
+            "args": []
           }
         ]
       },
@@ -88,7 +88,7 @@
       ]
     },
     "security": {
-      "csp": null
+      "csp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline';"
     },
     "windows": [
       {

@@ -1,15 +1,10 @@
 {
   "llm": {
-    "provider": "custom",
-    "base_url": "https://generativelanguage.googleapis.com/v1beta",
-    "api_key": "YOUR_API_KEY",
-    "model": "gemini-2.5-pro",
+    "provider": "openai",
+    "base_url": "https://router.bynara.id/v1",
+    "api_key": "",
+    "model": "agnes-3-flash",
     "temperature": 0.2
-  },
-  "kaggle": {
-    "api_key_path": "/home/sword/.kaggle/kaggle.json",
-    "username": "sword",
-    "key": "KGAT_af672dd694ac658ce740d522c25d55ae"
   },
   "verification": {
     "enabled": true,
@@ -43,25 +38,16 @@
     "font": "Times New Roman"
   },
   "report": {
-    "university": "Rajshahi University of Engineering \\& Technology",
-    "department": "Department of Electrical and Electronic Engineering",
-    "course_code": "EEE 3102",
-    "course_name": "Digital Signal Processing Sessional",
+    "university": "",
+    "department": "",
+    "course_code": "",
+    "course_name": "",
     "student": {
-      "name": "John Doe",
-      "roll": "1901000",
-      "section": "A",
-      "group": "1"
+      "name": "",
+      "roll": "",
+      "section": "",
+      "group": ""
     },
-    "teachers": [
-      {
-        "name": "Dr. Jane Smith",
-        "designation": "Professor"
-      },
-      {
-        "name": "Mr. Bob Brown",
-        "designation": "Lecturer"
-      }
-    ]
+    "teachers": []
   }
 }

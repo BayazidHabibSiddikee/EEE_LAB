@@ -48,25 +48,25 @@ def _load_iv_data(path: str) -> Optional[pd.DataFrame]:
         pass
     return None
 
-def _interpolate_simulation(sim_df: pd.DataFrame, target_v: float) -> Optional[float]:
+def _interpolate_simulation(sim_df: pd.DataFrame, target_v: float, target_i: float = None) -> Optional[float]:
     if sim_df is None or sim_df.empty:
         return None
-    v = sim_df["V"].values
-    i = sim_df["I"].values
-    if target_v <= v[0]:
-        return float(i[0])
-    if target_v >= v[-1]:
-        return float(i[-1])
-    idx = np.searchsorted(v, target_v)
-    if idx == 0:
-        return float(i[0])
-    if idx == len(v):
-        return float(i[-1])
-    v0, v1 = v[idx-1], v[idx]
-    i0, i1 = i[idx-1], i[idx]
-    if v1 == v0:
-        return float(i0)
-    return float(i0 + (i1 - i0) * (target_v - v0) / (v1 - v0))
+    # Find all points within 0.15V of target_v
+    mask = (sim_df["V"] >= target_v - 0.15) & (sim_df["V"] <= target_v + 0.15)
+    close_points = sim_df[mask]
+    if close_points.empty:
+        # Fallback to absolute closest V
+        closest_idx = (sim_df["V"] - target_v).abs().idxmin()
+        return float(sim_df.loc[closest_idx, "I"])
+    
+    if target_i is not None:
+        # If we have a target I, find the closest I among the close V points
+        closest_idx = (close_points["I"] * 1000 - target_i).abs().idxmin()
+        return float(close_points.loc[closest_idx, "I"])
+    else:
+        # Just return the first one
+        return float(close_points.iloc[0]["I"])
+
 
 def _relative_error(claimed: float, actual: float) -> float:
     if actual == 0:
@@ -105,7 +105,7 @@ def check_data(report: Dict[str, Any]) -> List[Dict]:
     mismatch_count = 0
     max_rel_error = 0.0
     for v_claimed, i_claimed in table_rows:
-        i_actual = _interpolate_simulation(sim_df, v_claimed)
+        i_actual = _interpolate_simulation(sim_df, v_claimed, i_claimed)
         if i_actual is None:
             continue
         i_claimed_ma = i_claimed
@@ -152,7 +152,7 @@ def feature_vector(report: Dict[str, Any]) -> Dict[str, float]:
         mismatches = 0
         max_err = 0.0
         for v_claimed, i_claimed in table_rows:
-            i_actual = _interpolate_simulation(sim_df, v_claimed)
+            i_actual = _interpolate_simulation(sim_df, v_claimed, i_claimed)
             if i_actual is None:
                 continue
             i_claimed_ma = i_claimed

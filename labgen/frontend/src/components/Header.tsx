@@ -1,5 +1,6 @@
 import { Menu, Terminal, Wifi, WifiOff, AlertTriangle, Zap, Brain } from 'lucide-react'
 import { cn } from '../lib/utils'
+import { CONNECTION_STATUS } from '../lib/constants'
 
 interface HeaderProps {
   onMenuClick: () => void
@@ -9,14 +10,10 @@ interface HeaderProps {
 }
 
 export function Header({ onMenuClick, onTerminalClick, connectionStatus, isGenerating }: HeaderProps) {
-  const statusConfig = {
-    connected: { color: 'text-cyber-primary', icon: Wifi, label: 'LINK ESTABLISHED' },
-    connecting: { color: 'text-cyber-accent animate-pulse', icon: Zap, label: 'HANDSHAKE IN PROGRESS' },
-    disconnected: { color: 'text-cyber-textDim', icon: WifiOff, label: 'LINK SEVERED' },
-    error: { color: 'text-cyber-secondary animate-pulse', icon: AlertTriangle, label: 'COMMUNICATION ERROR' },
-  }
-
-  const config = statusConfig[connectionStatus]
+  const config = CONNECTION_STATUS[connectionStatus]
+  const Icon = connectionStatus === 'connected' ? Wifi : 
+               connectionStatus === 'connecting' ? Zap :
+               connectionStatus === 'disconnected' ? WifiOff : AlertTriangle;
 
   return (
     <header className="h-14 border-b border-cyber-border bg-cyber-surface/80 backdrop-blur-sm flex items-center justify-between px-4 z-20">
@@ -39,8 +36,8 @@ export function Header({ onMenuClick, onTerminalClick, connectionStatus, isGener
       <div className="flex items-center gap-6">
         {/* Connection Status */}
         <div className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded border border-cyber-border/50 bg-cyber-bg/50">
-          <config.icon className={cn('w-4 h-4', config.color)} />
-          <span className={cn('font-mono text-xs', config.color)}>{config.label}</span>
+          <Icon className={cn('w-4 h-4', config.color)} />
+          <span className={cn('font-mono text-xs', config.color)}>{config.headerLabel}</span>
         </div>
 
         {/* Generation Indicator */}

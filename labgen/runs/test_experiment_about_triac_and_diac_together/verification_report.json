@@ -1,0 +1,55 @@
+{
+  "summary": {
+    "passed": true,
+    "failures": 0,
+    "warnings": 4,
+    "info": 1
+  },
+  "issues": [
+    {
+      "module": "text",
+      "severity": "medium",
+      "category": "word_count",
+      "message": "Conclusion only 142 words (minimum 150)",
+      "location": {
+        "section": "Conclusion"
+      }
+    },
+    {
+      "module": "text",
+      "severity": "medium",
+      "category": "tense",
+      "message": "Discussion has 4 present-tense verbs (should be past tense)",
+      "location": {
+        "section": "Discussion"
+      }
+    },
+    {
+      "module": "text",
+      "severity": "medium",
+      "category": "tense",
+      "message": "Conclusion has 6 present-tense verbs (should be past tense)",
+      "location": {
+        "section": "Conclusion"
+      }
+    },
+    {
+      "module": "data",
+      "severity": "low",
+      "category": "data_ok",
+      "message": "All 10 data points match simulation within 20%",
+      "location": {
+        "section": "Result"
+      }
+    },
+    {
+      "module": "circuit",
+      "severity": "medium",
+      "category": "netlist_apparatus_mismatch",
+      "message": "Low overlap between netlist components and apparatus list (overlap=0%)",
+      "location": {
+        "section": "Circuit Design / Required Apparatus"
+      }
+    }
+  ]
+}

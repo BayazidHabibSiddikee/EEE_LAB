@@ -15,7 +15,7 @@ export function AccordionSection({ title, description, children, defaultOpen = t
 
   return (
     <div className={cn('bg-slate-800/50 border border-slate-700 rounded-lg overflow-hidden', className)}>
-      <button
+      <button type="button"
         onClick={() => setIsOpen(!isOpen)}
         className="w-full px-4 py-3 flex items-center justify-between hover:bg-slate-800 transition-colors"
         aria-expanded={isOpen}

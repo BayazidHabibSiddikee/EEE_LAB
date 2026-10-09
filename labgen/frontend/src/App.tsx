@@ -26,10 +26,11 @@ export function App() {
   const [stages, setStages] = useState<PipelineStage[]>(INITIAL_STAGES);
   const [currentStage, setCurrentStage] = useState<PipelineStageId | null>(null);
   const [assets, setAssets] = useState<Asset[]>([]);
+  const [simulationImages, setSimulationImages] = useState<string[]>([]);
   const [markdownContent, setMarkdownContent] = useState<string>('');
   const [latexContent, setLatexContent] = useState<string>('');
   const [cadModelUrl, setCadModelUrl] = useState<string | undefined>(undefined);
-  const [centerTab, setCenterTab] = useState<'preview' | 'code' | '3d'>('preview');
+  const [centerTab, setCenterTab] = useState<'preview' | 'code' | '3d' | 'simulation'>('preview');
   const [terminalLogs, setTerminalLogs] = useState<Array<{
     id: number;
     stage: PipelineStageId;
@@ -111,12 +112,21 @@ export function App() {
 
       case 'assets_ready':
         setAssets(msg.assets);
-        // Set CAD model URL if available
-        const fcstdAsset = msg.assets.find(a => a.type === 'fcstd');
-        if (fcstdAsset) {
-          setCadModelUrl(`/api/reports/${reportId}/asset/${encodeURIComponent(fcstdAsset.path)}`);
+        // Extract simulation images (plots, waveforms, etc.)
+        const imageAssets = msg.assets.filter(a => a.type === 'image' || a.type === 'csv' || a.label.includes('Plot') || a.label.includes('plot'));
+        const imageUrls = imageAssets.map(a => `/api/reports/${reportId}/asset/${encodeURIComponent(a.path)}`);
+        setSimulationImages(imageUrls);
+        
+        // Set CAD model URL if available (prefer STEP/STL for 3D viewer)
+        const stepAsset = msg.assets.find(a => a.type === 'step');
+        if (stepAsset) {
+          setCadModelUrl(`/api/reports/${reportId}/asset/${encodeURIComponent(stepAsset.path)}`);
+        } else {
+          const fcstdAsset = msg.assets.find(a => a.type === 'fcstd');
+          if (fcstdAsset) {
+            setCadModelUrl(`/api/reports/${reportId}/asset/${encodeURIComponent(fcstdAsset.path)}`);
+          }
         }
-        // Set markdown/latex content from PDF asset (would need backend endpoint)
         break;
 
       case 'intervention_required':
@@ -276,6 +286,7 @@ export function App() {
           onTabChange={setCenterTab}
           onAssetDownload={handleAssetDownload}
           isGenerating={isGenerating}
+          simulationImages={simulationImages}
         />
 
         {/* Resize handle between center and left (optional) */}

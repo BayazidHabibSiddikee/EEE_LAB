@@ -1,11 +1,6 @@
-import ReactMarkdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
-import remarkMath from 'remark-math';
-import rehypeKatex from 'rehype-katex';
-import 'katex/dist/katex.min.css';
 import { useState, useRef, useEffect } from 'react';
 import { cn } from '../../lib/utils';
-import { FileText, Code2, Box, Download, ChevronRight } from 'lucide-react';
+import { FileText, Code2, Box, Download, ChevronRight, Image, Zap, RotateCcw } from 'lucide-react';
 import { Asset } from '../../types/pipeline';
 
 interface CenterWorkspaceProps {
@@ -13,15 +8,17 @@ interface CenterWorkspaceProps {
   markdownContent: string;
   latexContent: string;
   cadModelUrl?: string;
-  activeTab: 'preview' | 'code' | '3d';
-  onTabChange: (tab: 'preview' | 'code' | '3d') => void;
+  activeTab: 'preview' | 'code' | '3d' | 'simulation';
+  onTabChange: (tab: 'preview' | 'code' | '3d' | 'simulation') => void;
   onAssetDownload: (asset: Asset) => void;
   isGenerating: boolean;
+  simulationImages: string[];
 }
 
 const TABS = [
-  { id: 'preview', label: 'Preview', icon: FileText },
+  { id: 'preview', label: 'Report', icon: FileText },
   { id: 'code', label: 'Source', icon: Code2 },
+  { id: 'simulation', label: 'Simulation', icon: Zap },
   { id: '3d', label: '3D View', icon: Box },
 ] as const;
 
@@ -33,9 +30,11 @@ export function CenterWorkspace({
   activeTab, 
   onTabChange, 
   onAssetDownload,
-  isGenerating
+  isGenerating,
+  simulationImages
 }: CenterWorkspaceProps) {
   const [assetDrawerOpen, setAssetDrawerOpen] = useState(false);
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
 
   return (
     <div className="flex-1 flex flex-col bg-slate-950 relative overflow-hidden">
@@ -45,7 +44,7 @@ export function CenterWorkspace({
           {TABS.map(({ id, label, icon: Icon }) => (
             <button
               key={id}
-              onClick={() => onTabChange(id as 'preview' | 'code' | '3d')}
+              onClick={() => onTabChange(id as 'preview' | 'code' | '3d' | 'simulation')}
               className={cn(
                 'px-3 py-1.5 rounded-t-lg text-sm font-medium transition-all duration-150 flex items-center gap-1.5',
                 activeTab === id
@@ -87,14 +86,38 @@ export function CenterWorkspace({
         {activeTab === 'code' && (
           <CodeView content={latexContent || markdownContent} isGenerating={isGenerating} />
         )}
+        {activeTab === 'simulation' && (
+          <SimulationView images={simulationImages} isGenerating={isGenerating} onImageClick={setSelectedImage} />
+        )}
         {activeTab === '3d' && (
           <CADViewer modelUrl={cadModelUrl} isGenerating={isGenerating} />
         )}
       </div>
 
+      {/* Image Modal */}
+      {selectedImage && (
+        <div 
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 animate-in fade-in"
+          onClick={() => setSelectedImage(null)}
+        >
+          <img 
+            src={selectedImage} 
+            alt="Simulation result"
+            className="max-w-[90vw] max-h-[90vh] object-contain"
+            onClick={(e) => e.stopPropagation()}
+          />
+          <button 
+            className="absolute top-4 right-4 p-2 bg-slate-800 rounded-lg hover:bg-slate-700"
+            onClick={() => setSelectedImage(null)}
+          >
+            ✕
+          </button>
+        </div>
+      )}
+
       {/* Asset Drawer */}
       {assetDrawerOpen && assets.length > 0 && (
-        <div className="fixed right-0 top-0 bottom-0 w-72 bg-slate-900 border-l border-slate-700 z-50 animate-in slide-in-from-right duration-200 flex flex-col">
+        <div className="fixed right-0 top-0 bottom-0 w-80 bg-slate-900 border-l border-slate-700 z-50 animate-in slide-in-from-right duration-200 flex flex-col">
           <div className="p-4 border-b border-slate-700 flex items-center justify-between">
             <h3 className="font-medium text-white">Generated Assets</h3>
             <button 
@@ -116,6 +139,8 @@ export function CenterWorkspace({
                   {asset.type === 'fcstd' && <Box className="w-5 h-5 text-orange-400" />}
                   {asset.type === 'net' && <Code2 className="w-5 h-5 text-yellow-400" />}
                   {asset.type === 'csv' && <FileText className="w-5 h-5 text-green-400" />}
+                  {asset.type === 'step' && <Box className="w-5 h-5 text-purple-400" />}
+                  {asset.type === 'image' && <Image className="w-5 h-5 text-blue-400" />}
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium text-white truncate">{asset.label}</p>
@@ -132,6 +157,14 @@ export function CenterWorkspace({
 }
 
 function MarkdownPreview({ content, isGenerating }: { content: string; isGenerating: boolean }) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  
+  useEffect(() => {
+    if (containerRef.current) {
+      containerRef.current.innerHTML = simpleMarkdownToHtml(content);
+    }
+  }, [content]);
+
   if (!content && !isGenerating) {
     return (
       <div className="flex items-center justify-center h-full text-slate-500">
@@ -146,50 +179,97 @@ function MarkdownPreview({ content, isGenerating }: { content: string; isGenerat
 
   return (
     <div 
+      ref={containerRef}
       className="h-full overflow-y-auto p-6 prose prose-invert prose-slate max-w-3xl mx-auto"
       style={{ fontFamily: 'Inter, system-ui, sans-serif' }}
     >
-      <ReactMarkdown
-        remarkPlugins={[remarkGfm, remarkMath]}
-        rehypePlugins={[rehypeKatex]}
-        components={{
-          pre({ node, inline, className, children, ...props }: any) {
-            return (
-              <pre className="bg-slate-900 rounded p-4 overflow-x-auto text-sm border border-slate-800" {...props}>
-                {children}
-              </pre>
-            )
-          },
-          code({ node, inline, className, children, ...props }: any) {
-            return inline ? (
-              <code className="bg-slate-800 rounded px-1.5 py-0.5 font-mono text-sm" {...props}>{children}</code>
-            ) : (
-              <code className="block font-mono text-sm" {...props}>{children}</code>
-            )
-          },
-          table({ node, ...props }: any) {
-            return (
-              <div className="overflow-x-auto my-4 border border-slate-700 rounded-lg">
-                <table className="w-full text-sm text-left divide-y divide-slate-700" {...props} />
-              </div>
-            )
-          },
-          th({ node, ...props }: any) {
-            return <th className="px-4 py-3 bg-slate-800 font-semibold" {...props} />
-          },
-          td({ node, ...props }: any) {
-            return <td className="px-4 py-2 border-t border-slate-800" {...props} />
-          }
-        }}
-      >
-        {content}
-      </ReactMarkdown>
-      
-      {isGenerating && (
-        <div className="animate-pulse space-y-4 mt-6">
+      {isGenerating ? (
+        <div className="animate-pulse space-y-4">
+          <div className="h-8 bg-slate-800 rounded w-3/4"></div>
           <div className="h-4 bg-slate-800 rounded w-full"></div>
           <div className="h-4 bg-slate-800 rounded w-5/6"></div>
           <div className="h-4 bg-slate-800 rounded w-4/6"></div>
+          <div className="h-32 bg-slate-800 rounded"></div>
+        </div>
+      ) : (
+        <div dangerouslySetInnerHTML={{ __html: content || '' }} />
+      )}
+    </div>
+  );
+}
+
+function CodeView({ content, isGenerating }: { content: string; isGenerating: boolean }) {
+  if (!content && !isGenerating) {
+    return (
+      <div className="flex items-center justify-center h-full text-slate-500">
+        <div className="text-center">
+          <Code2 className="w-16 h-16 mx-auto text-slate-700 mb-4" />
+          <p className="text-lg">No source available</p>
+          <p className="text-sm mt-1">Generate a report to view LaTeX/Markdown source</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="h-full overflow-hidden">
+      <pre className="h-full p-4 overflow-auto text-sm font-mono text-slate-100 bg-slate-950">
+        <code className="language-latex">{isGenerating ? '// Generating source...' : content || ''}</code>
+      </pre>
+    </div>
+  );
+}
+
+function SimulationView({ images, isGenerating, onImageClick }: { images: string[]; isGenerating: boolean; onImageClick: (src: string) => void }) {
+  if (images.length === 0 && !isGenerating) {
+    return (
+      <div className="flex items-center justify-center h-full text-slate-500">
+        <div className="text-center">
+          <Zap className="w-16 h-16 mx-auto text-slate-700 mb-4" />
+          <p className="text-lg">No simulation results yet</p>
+          <p className="text-sm mt-1">Run a generation to see IV curves, waveforms, and plots</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="h-full overflow-y-auto p-6">
+      {isGenerating ? (
+        <div className="animate-pulse space-y-6 max-w-3xl mx-auto">
+          <div className="h-64 bg-slate-800 rounded-lg"></div>
+          <div className="h-64 bg-slate-800 rounded-lg"></div>
+          <div className="h-64 bg-slate-800 rounded-lg"></div>
+        </div>
+      ) : (
+        <div className="space-y-6 max-w-4xl mx-auto">
+          {images.map((src, idx) => (
+            <div key={idx} className="bg-slate-900/50 border border-slate-700 rounded-xl overflow-hidden">
+              <div className="p-3 border-b border-slate-700 flex items-center justify-between bg-slate-900">
+                <span className="text-sm font-medium text-slate-300">Simulation Plot {idx + 1}</span>
+                <span className="text-xs text-slate-500">Click to enlarge</span>
+              </div>
+              <img 
+                src={src} 
+                alt={`Simulation ${idx + 1}`}
+                className="w-full h-auto cursor-zoom-in"
+                onClick={() => onImageClick(src)}
+                onError={(e) => {
+                  e.currentTarget.style.display = 'none';
+                  e.currentTarget.nextElementSibling?.style.setProperty('display', 'block');
+                }}
+              />
+              <div className="p-6 text-center text-slate-500" style={{ display: 'none' }}>
+                Failed to load image
+              </div>
+            </div>
+          ))}
+          {images.length === 0 && (
+            <div className="text-center text-slate-500 py-12">
+              <p>No simulation images generated yet</p>
+              <p className="text-sm mt-1">Simulation plots will appear here after generation completes</p>
+            </div>
+          )}
         </div>
       )}
     </div>
@@ -201,9 +281,8 @@ function CADViewer({ modelUrl, isGenerating }: { modelUrl?: string; isGenerating
   
   useEffect(() => {
     if (!canvasRef.current || !modelUrl) return;
-    
     // Three.js initialization would go here
-    // For now, show placeholder
+    // For now, show placeholder with model info
   }, [modelUrl]);
 
   if (!modelUrl && !isGenerating) {
@@ -212,7 +291,7 @@ function CADViewer({ modelUrl, isGenerating }: { modelUrl?: string; isGenerating
         <div className="text-center">
           <Box className="w-16 h-16 mx-auto text-slate-700 mb-4" />
           <p className="text-lg">No 3D model available</p>
-          <p className="text-sm mt-1">Generate CAD to view 3D geometry</p>
+          <p className="text-sm mt-1">Provide a CAD prompt during generation to create 3D geometry</p>
         </div>
       </div>
     );
@@ -233,11 +312,16 @@ function CADViewer({ modelUrl, isGenerating }: { modelUrl?: string; isGenerating
           </div>
         </div>
       )}
+      {!isGenerating && modelUrl && (
+        <div className="absolute bottom-4 left-4 right-4 bg-slate-900/80 backdrop-blur rounded-lg p-3 border border-slate-700">
+          <p className="text-xs text-slate-400">Model: {modelUrl.split('/').pop()}</p>
+          <p className="text-xs text-slate-500">Three.js viewer - implement STEP/STL loading for full 3D interaction</p>
+        </div>
+      )}
     </div>
   );
 }
 
-// Simple markdown to HTML converter (placeholder - use react-markdown in production)
 function simpleMarkdownToHtml(md: string): string {
   return md
     .replace(/^### (.*$)/gim, '<h3>$1</h3>')

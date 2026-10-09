@@ -1,6 +1,6 @@
 """
-FastAPI Backend for LabGen Cyberdeck Terminal
-Handles report generation, verification, and WebSocket communication
+FastAPI Backend for LabGen IDE
+Handles report generation, verification, and WebSocket communication with stage-based pipeline tracking
 """
 
 import asyncio
@@ -26,6 +26,10 @@ import sys
 sys.path.append(str(Path(__file__).parent.parent))
 from main import run_generation as run_labgen_generation
 from pipeline.verify import run_all_checks, extract_features, load_classifier, predict_classifier
+
+# Intervention state management
+intervention_events: Dict[str, asyncio.Event] = {}
+intervention_actions: Dict[str, str] = {}
 
 PROGRESS_STAGES = {
     "initializing rag": (20, 10),
@@ -113,8 +117,6 @@ class ConnectionManager:
                 pass
 
 manager = ConnectionManager()
-intervention_events = {}
-intervention_actions = {}
 
 # Data models
 class GenerateRequest(BaseModel):
@@ -125,6 +127,7 @@ class GenerateRequest(BaseModel):
     rollNumber: str = "1901000"
     section: str = "A"
     group: int = 1
+    cadPrompt: str = ""
 
 class VerifyRequest(BaseModel):
     reportPath: str
@@ -205,16 +208,9 @@ async def websocket_endpoint(websocket: WebSocket, api_key: str = None):
                     asyncio.create_task(run_generation_with_progress(websocket, report_id, params))
                 elif msg.type == "intervention_response":
                     report_id = msg.reportId
-                    action = msg_dict.get("action")
                     if report_id in intervention_events:
-                        intervention_actions[report_id] = action
+                        intervention_actions[report_id] = msg.action
                         intervention_events[report_id].set()
-                        
-                    await websocket.send_text(json.dumps({
-                        "type": "intervention_ack",
-                        "reportId": report_id,
-                        "action": action
-                    }))
             except json.JSONDecodeError:
                 pass
             except ValidationError as e:
@@ -252,27 +248,24 @@ async def list_reports():
     if runs_dir.exists():
         for run_dir in sorted(runs_dir.iterdir(), key=lambda x: x.stat().st_mtime, reverse=True):
             if run_dir.is_dir():
-                # Look for verification report
                 verification_path = run_dir / "verification_report.json"
                 verification = None
                 if verification_path.exists():
                     with open(verification_path) as f:
                         verification = json.load(f)
                 
-                # Find PDF
                 pdf_files = list(run_dir.glob("*.pdf"))
                 pdf_path = str(pdf_files[0]) if pdf_files else None
                 
-                # Determine status
-                status = "complete"
+                status_val = "complete"
                 if not pdf_path:
-                    status = "error"
+                    status_val = "error"
                 
                 reports.append(ReportInfo(
                     id=run_dir.name,
                     name=run_dir.name.replace("_", " ").replace("exp_", "EXP ").replace("analyzing_", "").replace("triac_", "TRIAC ").replace("characteristics", "CHARACTERISTICS").title(),
                     experiment=run_dir.name,
-                    status=status,
+                    status=status_val,
                     progress=100,
                     createdAt=datetime.fromtimestamp(run_dir.stat().st_mtime).isoformat(),
                     path=pdf_path,
@@ -282,10 +275,7 @@ async def list_reports():
 
 @app.post("/api/generate", dependencies=[api_key_dep])
 async def generate_report(request: GenerateRequest, background_tasks: BackgroundTasks):
-    """Start report generation"""
     report_id = f"report_{uuid.uuid4().hex[:8]}"
-    
-    # Create a mock response for now - actual generation happens via WebSocket
     return {
         "reportId": report_id,
         "status": "started",
@@ -299,11 +289,8 @@ async def generate_websocket(websocket: WebSocket, report_id: str, api_key: str 
         return
     await websocket.accept()
     try:
-        # Receive generation parameters
         data = await websocket.receive_text()
         params = json.loads(data)
-        
-        # Run generation with progress updates
         await run_generation_with_progress(websocket, report_id, params)
     except WebSocketDisconnect:
         pass
@@ -344,6 +331,7 @@ async def run_generation_with_progress(websocket: WebSocket, report_id: str, par
         exp_num = str(params.get("experimentNumber", 2))
         circuit_prompt = params.get("circuitPrompt", "")
         cad_prompt = params.get("cadPrompt", "")
+        cad_requested = bool(cad_prompt)
         
         # Stage 1: Heuristic Gating
         await emit_stage_event(websocket, report_id, "stage_start", "heuristic", {
@@ -369,6 +357,11 @@ async def run_generation_with_progress(websocket: WebSocket, report_id: str, par
         current_stage = "heuristic"
         stage_progress = {"heuristic": 0, "physics": 0, "cad": 0, "report": 0}
         assets = []
+        stage_started = {"heuristic": False, "physics": False, "cad": False, "report": False}
+        
+        # Start first stage
+        await emit_stage_event(websocket, report_id, "stage_start", "heuristic", {"message": "Initializing heuristic gating...", "progress": 0})
+        stage_started["heuristic"] = True
         
         while True:
             line = await process.stdout.readline()
@@ -381,12 +374,13 @@ async def run_generation_with_progress(websocket: WebSocket, report_id: str, par
             
             line_lower = line_str.lower()
             
-            # Detect stage transitions from log output
+            # Detect stage transitions from log output (matching main.py actual logs)
             if "initializing rag" in line_lower or "building rag" in line_lower:
                 if current_stage != "heuristic":
                     await emit_stage_event(websocket, report_id, "stage_complete", current_stage, {"progress": 100})
                     current_stage = "heuristic"
                     await emit_stage_event(websocket, report_id, "stage_start", "heuristic", {"progress": 0})
+                    stage_started["heuristic"] = True
                 stage_progress["heuristic"] = min(100, stage_progress["heuristic"] + 10)
                 await emit_stage_event(websocket, report_id, "stage_progress", "heuristic", {
                     "progress": stage_progress["heuristic"],
@@ -398,6 +392,7 @@ async def run_generation_with_progress(websocket: WebSocket, report_id: str, par
                     await emit_stage_event(websocket, report_id, "stage_complete", current_stage, {"progress": 100})
                     current_stage = "heuristic"
                     await emit_stage_event(websocket, report_id, "stage_start", "heuristic", {"progress": stage_progress["heuristic"]})
+                    stage_started["heuristic"] = True
                 stage_progress["heuristic"] = min(100, stage_progress["heuristic"] + 15)
                 await emit_stage_event(websocket, report_id, "stage_progress", "heuristic", {
                     "progress": stage_progress["heuristic"],
@@ -409,80 +404,59 @@ async def run_generation_with_progress(websocket: WebSocket, report_id: str, par
                     await emit_stage_event(websocket, report_id, "stage_complete", current_stage, {"progress": 100})
                     current_stage = "physics"
                     await emit_stage_event(websocket, report_id, "stage_start", "physics", {"progress": 0})
+                    stage_started["physics"] = True
                 stage_progress["physics"] = min(100, stage_progress["physics"] + 12)
                 await emit_stage_event(websocket, report_id, "stage_progress", "physics", {
                     "progress": stage_progress["physics"],
                     "log": line_str
                 })
                 
-            elif "assembling latex" in line_lower or "rendering latex" in line_lower or "compiling pdf" in line_lower:
-                if current_stage != "report":
-                    await emit_stage_event(websocket, report_id, "stage_complete", current_stage, {"progress": 100})
-                    current_stage = "report"
-                    await emit_stage_event(websocket, report_id, "stage_start", "report", {"progress": 0})
-                stage_progress["report"] = min(100, stage_progress["report"] + 15)
-                await emit_stage_event(websocket, report_id, "stage_progress", "report", {
-                    "progress": stage_progress["report"],
-                    "log": line_str
-                })
-                
-            elif "cad" in line_lower or "freecad" in line_lower or "step file" in line_lower:
+            # CAD stage - only if cad_prompt was provided
+            elif cad_requested and ("freecad" in line_lower or "design_cad" in line_lower or "cad_agent" in line_lower or "step file" in line_lower or "creating cad" in line_lower or "cadquery" in line_lower):
                 if current_stage != "cad":
                     await emit_stage_event(websocket, report_id, "stage_complete", current_stage, {"progress": 100})
                     current_stage = "cad"
                     await emit_stage_event(websocket, report_id, "stage_start", "cad", {"progress": 0})
+                    stage_started["cad"] = True
                 stage_progress["cad"] = min(100, stage_progress["cad"] + 15)
                 await emit_stage_event(websocket, report_id, "stage_progress", "cad", {
                     "progress": stage_progress["cad"],
                     "log": line_str
                 })
                 
-            elif "running verification" in line_lower or "lightgbm" in line_lower:
+            elif "assembling latex" in line_lower or "rendering latex" in line_lower or "compiling pdf" in line_lower or "compile_pdf" in line_lower:
+                if current_stage != "report":
+                    await emit_stage_event(websocket, report_id, "stage_complete", current_stage, {"progress": 100})
+                    current_stage = "report"
+                    await emit_stage_event(websocket, report_id, "stage_start", "report", {"progress": 0})
+                    stage_started["report"] = True
+                stage_progress["report"] = min(100, stage_progress["report"] + 15)
+                await emit_stage_event(websocket, report_id, "stage_progress", "report", {
+                    "progress": stage_progress["report"],
+                    "log": line_str
+                })
+                
+            elif "running verification" in line_lower or "lightgbm" in line_lower or "verification" in line_lower:
                 if current_stage != "report":
                     await emit_stage_event(websocket, report_id, "stage_complete", current_stage, {"progress": 100})
                     current_stage = "report"
                     await emit_stage_event(websocket, report_id, "stage_start", "report", {"progress": stage_progress["report"]})
+                    stage_started["report"] = True
                 stage_progress["report"] = min(100, stage_progress["report"] + 10)
                 await emit_stage_event(websocket, report_id, "stage_progress", "report", {
                     "progress": stage_progress["report"],
                     "log": line_str
                 })
                 
-            elif "error" in line_lower and "validation error" not in line_lower:
-                # Ask for intervention
-                import signal
-                
-                try:
-                    os.kill(process.pid, signal.SIGSTOP)
-                except Exception:
-                    pass
-                
-                event = asyncio.Event()
-                intervention_events[report_id] = event
-                
+            elif "error" in line_lower and "validation error" not in line_lower and "error executing" not in line_lower:
                 await websocket.send_text(json.dumps({
-                    "type": "intervention_required",
+                    "type": "stage_error",
                     "reportId": report_id,
                     "stage": current_stage,
-                    "message": line_str,
-                    "params": {"process_pid": process.pid}
+                    "error": line_str,
+                    "recoverable": True
                 }))
-                
-                await event.wait()
-                action = intervention_actions.pop(report_id, "retry")
-                del intervention_events[report_id]
-                
-                if action == "abort":
-                    try:
-                        process.terminate()
-                    except Exception:
-                        pass
-                    break
-                else:
-                    try:
-                        os.kill(process.pid, signal.SIGCONT)
-                    except Exception:
-                        pass
+            
             else:
                 # Generic progress for current stage
                 if current_stage in stage_progress:
@@ -509,14 +483,20 @@ async def run_generation_with_progress(websocket: WebSocket, report_id: str, par
             })
             return
             
-        # Complete all stages
-        for stage in ["heuristic", "physics", "cad", "report"]:
-            if stage_progress[stage] < 100:
+        # Complete all stages that were started
+        stage_order = ["heuristic", "physics", "cad", "report"]
+        for stage in stage_order:
+            if stage_started.get(stage) or stage in ["heuristic", "physics", "report"]:
+                if stage_progress[stage] < 100:
+                    stage_progress[stage] = 100
+                    await emit_stage_event(websocket, report_id, "stage_progress", stage, {"progress": 100})
+                await emit_stage_event(websocket, report_id, "stage_complete", stage, {"progress": 100})
+            elif stage == "cad" and not cad_requested:
                 stage_progress[stage] = 100
                 await emit_stage_event(websocket, report_id, "stage_progress", stage, {"progress": 100})
-            await emit_stage_event(websocket, report_id, "stage_complete", stage, {"progress": 100})
+                await emit_stage_event(websocket, report_id, "stage_complete", stage, {"progress": 100, "skipped": True})
         
-        # Collect assets
+        # Collect assets (always try, even if some stages had issues)
         safe_name = exp_name.lower().replace(" ", "_")
         run_dir = Path(labgen_dir) / "runs" / f"exp_{exp_num.zfill(2)}_{safe_name}"
         
@@ -536,6 +516,23 @@ async def run_generation_with_progress(websocket: WebSocket, report_id: str, par
             csv_files = list(run_dir.glob("*.csv")) + list(run_dir.glob("*_data.txt"))
             for csv_file in csv_files:
                 assets.append({"type": "csv", "path": str(csv_file), "label": f"Simulation Data ({csv_file.name})"})
+            
+            # Also check for STEP files for 3D viewer
+            step_files = list(run_dir.glob("*.step")) + list(run_dir.glob("*.stl"))
+            for step_file in step_files:
+                assets.append({"type": "step", "path": str(step_file), "label": f"3D Model ({step_file.name})"})
+            
+            # Collect plot images from figs directory
+            figs_dir = run_dir / "figs"
+            if figs_dir.exists():
+                plot_files = list(figs_dir.glob("*.png")) + list(figs_dir.glob("*.jpg")) + list(figs_dir.glob("*.jpeg")) + list(figs_dir.glob("*.svg"))
+                for plot_file in plot_files:
+                    assets.append({"type": "image", "path": str(plot_file), "label": f"Plot: {plot_file.stem}"})
+            
+            # Also check for schematic images
+            schematic_files = list(run_dir.glob("*schematic*.png")) + list(run_dir.glob("*circuit*.png"))
+            for sch_file in schematic_files:
+                assets.append({"type": "image", "path": str(sch_file), "label": f"Schematic: {sch_file.stem}"})
         
         if assets:
             await websocket.send_text(json.dumps({
@@ -563,8 +560,6 @@ async def run_generation_with_progress(websocket: WebSocket, report_id: str, par
 async def verify_report(request: VerifyRequest):
     """Verify an existing report"""
     try:
-        # Load the report and run verification
-        # This would use the existing verification pipeline
         return {
             "status": "verified",
             "summary": {
@@ -589,7 +584,7 @@ async def get_report_pdf(report_id: str):
 
 @app.get("/api/reports/{report_id}/asset/{asset_path:path}", dependencies=[api_key_dep])
 async def get_report_asset(report_id: str, asset_path: str):
-    """Serve any generated asset (FCStd, netlist, CSV, etc.)"""
+    """Serve any generated asset (FCStd, netlist, CSV, STEP, STL, etc.)"""
     runs_dir = Path(__file__).parent.parent / "runs"
     for run_dir in runs_dir.iterdir():
         if run_dir.is_dir() and run_dir.name == report_id:
@@ -602,7 +597,9 @@ async def get_report_asset(report_id: str, asset_path: str):
                     media_type = "text/plain"
                 elif asset_file.suffix in [".net", ".cir"]:
                     media_type = "text/plain"
-                elif asset_file.suffix in [".FCStd", ".step", ".stl", ".obj"]:
+                elif asset_file.suffix in [".step", ".stp", ".stl"]:
+                    media_type = "application/octet-stream"
+                elif asset_file.suffix == ".FCStd":
                     media_type = "application/octet-stream"
                 return FileResponse(asset_file, media_type=media_type, filename=asset_file.name)
     raise HTTPException(status_code=404, detail="Asset not found")

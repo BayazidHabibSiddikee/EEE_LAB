@@ -2,21 +2,12 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 
 type ConnectionStatus = 'connecting' | 'connected' | 'disconnected' | 'error'
 
-interface WebSocketMessage {
-  type: string
-  reportId?: string
-  progress?: number
-  status?: string
-  log?: string
-  path?: string
-  verification?: {
-    passed: boolean
-    failures: number
-    warnings: number
-  }
-  message?: string
-  [key: string]: any
-}
+export type WebSocketMessage = 
+  | { type: 'progress'; reportId: string; progress: number; status: string; log?: string }
+  | { type: 'complete'; reportId: string; path: string; verification?: { passed: boolean; failures: number; warnings: number } }
+  | { type: 'error'; reportId: string; message: string }
+  | { type: 'verification'; reportId: string; verification: { passed: boolean; failures: number; warnings: number } }
+  | { type: 'generate'; reportId: string; payload: Record<string, any> }
 
 export function useWebSocket(url: string = import.meta.env.VITE_WS_URL || 'ws://localhost:8000/ws') {
   const [lastMessage, setLastMessage] = useState<WebSocketMessage | null>(null)
@@ -32,7 +23,9 @@ export function useWebSocket(url: string = import.meta.env.VITE_WS_URL || 'ws://
     setConnectionStatus('connecting')
     
     try {
-      const ws = new WebSocket(url)
+      const apiKey = import.meta.env.VITE_API_KEY || 'dev-secret-key'
+      const wsUrl = url.includes('?') ? `${url}&api_key=${apiKey}` : `${url}?api_key=${apiKey}`
+      const ws = new WebSocket(wsUrl)
       wsRef.current = ws
 
       ws.onopen = () => {
@@ -76,7 +69,7 @@ export function useWebSocket(url: string = import.meta.env.VITE_WS_URL || 'ws://
     }
   }, [url])
 
-  const sendMessage = useCallback((message: any) => {
+  const sendMessage = useCallback((message: WebSocketMessage) => {
     if (wsRef.current?.readyState === WebSocket.OPEN) {
       wsRef.current.send(JSON.stringify(message))
     } else {

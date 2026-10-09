@@ -2,13 +2,24 @@ import os
 import json
 import requests
 from typing import Dict, Any
+from tenacity import retry, wait_exponential, stop_after_attempt, retry_if_exception_type, before_sleep_log
+import logging
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+from pipeline.config import load_settings, get_api_key
 
 def get_llm_config() -> Dict[str, Any]:
-    settings_path = os.path.join(os.path.dirname(__file__), "..", "settings.json")
-    with open(settings_path, "r") as f:
-        settings = json.load(f)
-    return settings.get("llm", {})
+    return load_settings().get("llm", {})
 
+@retry(
+    wait=wait_exponential(multiplier=2, min=4, max=60),
+    stop=stop_after_attempt(5),
+    retry=retry_if_exception_type((requests.exceptions.HTTPError, ValueError)),
+    reraise=True,
+    before_sleep=lambda retry_state: logger.warning(f"API Rate Limit hit, retrying in {retry_state.next_action.sleep}s...")
+)
 def call_llm(system_prompt: str, user_prompt: str, response_json: bool = True) -> Dict[str, Any]:
     config = get_llm_config()
     provider = config.get("provider", "custom")
@@ -18,9 +29,8 @@ def call_llm(system_prompt: str, user_prompt: str, response_json: bool = True) -
     temperature = config.get("temperature", 0.2)
     
     if not api_key or api_key == "YOUR_API_KEY":
-        if os.environ.get("GEMINI_API_KEY"):
-            api_key = os.environ.get("GEMINI_API_KEY")
-        else:
+        api_key = get_api_key()
+        if not api_key:
             raise ValueError("No API key configured in settings.json or GEMINI_API_KEY env var")
     
     headers = {"Content-Type": "application/json"}
@@ -76,6 +86,8 @@ def call_llm(system_prompt: str, user_prompt: str, response_json: bool = True) -
         text = data["choices"][0]["message"]["content"]
     
     # Clean up response
+    if text is None:
+        raise ValueError("LLM returned empty content")
     if text.startswith("```json"):
         text = text[7:]
     if text.startswith("```"):
@@ -117,6 +129,14 @@ def generate_circuit_design(experiment_name: str, connection_prompt: str) -> Dic
 Experiment: {experiment_name}
 Connection Instructions: {connection_prompt if connection_prompt else "Design a standard, typical circuit for this experiment."}
 
+CRITICAL NGSPICE RULES:
+1. The voltage source MUST be named V1 and connected to node 1 and 0 (e.g. V1 1 0 DC 0).
+2. The circuit MUST use numbers for nodes (0, 1, 2, 3...) not letters.
+3. Subcircuits like TRIAC and DIAC MUST start with X (e.g. XT1 3 0 4 TRIAC, XD1 2 3 DIAC).
+4. Do NOT use generic names like LAMP or AC_LOAD. Use R for resistors, C for capacitors.
+5. Node 2 MUST be the primary voltage node of interest because the simulation sweeps V1 and plots V(2) vs I(V1).
+6. DO NOT use variables like {{Rvar}} in the netlist components. Give concrete values (e.g. R1 1 2 10k).
+
 Provide a JSON representation of the circuit:
 {{
     "circuit_design_text": "Detailed explanation of how the circuit is designed and works.",
@@ -127,9 +147,10 @@ Provide a JSON representation of the circuit:
     "netlist_components": [
         "V1 1 0 DC 0",
         "R1 1 2 1k",
-        "XT1 2 0 3 TRIAC"
+        "XD1 2 3 DIAC",
+        "XT1 3 0 4 TRIAC"
     ],
-    "schemdraw_code": "def draw_circuit(output_path):\\n    import schemdraw\\n    import schemdraw.elements as elm\\n    with schemdraw.Drawing(file=output_path, show=False) as d:\\n        d += elm.SourceV().up().label('Vac')\\n        d += elm.Resistor().right().label('1k')\\n        # Add other components...\\n"
+    "schemdraw_code": "def draw_circuit(output_path):\n    import schemdraw\n    import schemdraw.elements as elm\n    with schemdraw.Drawing(file=output_path, show=False) as d:\n        d += elm.SourceV().up().label('Vac')\n        d += elm.Resistor().right().label('1k')\n        # Add other components...\n"
 }}
 Ensure the schemdraw_code contains a single function named draw_circuit(output_path).
 """

@@ -10,7 +10,7 @@ import { ReportExplorer } from './components/ReportExplorer'
 import { TerminalOutput } from './components/TerminalOutput'
 import { StatusBar } from './components/StatusBar'
 import { Header } from './components/Header'
-import { useWebSocket } from './hooks/useWebSocket'
+import { useWebSocket, WebSocketMessage } from './hooks/useWebSocket'
 import { cn } from './lib/utils'
 
 interface Report {
@@ -118,7 +118,7 @@ export function App() {
     })
   }
 
-  const handleWebSocketMessage = (msg: any) => {
+  const handleWebSocketMessage = (msg: WebSocketMessage) => {
     if (msg.type === 'progress') {
       setReports(prev => prev.map(r => 
         r.id === msg.reportId ? { ...r, progress: msg.progress, status: msg.status } : r

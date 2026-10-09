@@ -6,15 +6,19 @@ Handles report generation, verification, and WebSocket communication
 import asyncio
 import json
 import os
+import time
 import uuid
+from collections import defaultdict
 from datetime import datetime
 from pathlib import Path
 from typing import Dict, Any, List, Optional
 
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException, BackgroundTasks
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException, BackgroundTasks, Security, status, Depends, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.security import APIKeyHeader
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, JSONResponse
+from starlette.middleware.base import BaseHTTPMiddleware
 from pydantic import BaseModel
 
 # Import LabGen modules
@@ -24,6 +28,36 @@ from main import run_generation as run_labgen_generation
 from pipeline.verify import run_all_checks, extract_features, load_classifier, predict_classifier
 
 app = FastAPI(title="LabGen Cyberdeck API", version="2.4.1")
+
+# Rate Limiter Middleware
+class SimpleRateLimitMiddleware(BaseHTTPMiddleware):
+    def __init__(self, app, max_requests: int = 60, window_seconds: int = 60):
+        super().__init__(app)
+        self.max_requests = max_requests
+        self.window_seconds = window_seconds
+        self.clients = defaultdict(lambda: {"count": 0, "reset_at": time.time() + window_seconds})
+
+    async def dispatch(self, request: Request, call_next):
+        if request.url.path.startswith("/api/"):
+            client_ip = request.client.host if request.client else "unknown"
+            now = time.time()
+            
+            client_data = self.clients[client_ip]
+            if now > client_data["reset_at"]:
+                client_data["count"] = 0
+                client_data["reset_at"] = now + self.window_seconds
+                
+            if client_data["count"] >= self.max_requests:
+                return JSONResponse(
+                    status_code=429,
+                    content={"detail": "Rate limit exceeded. Please try again later."}
+                )
+                
+            client_data["count"] += 1
+            
+        return await call_next(request)
+
+app.add_middleware(SimpleRateLimitMiddleware, max_requests=100, window_seconds=60)
 
 # CORS
 app.add_middleware(
@@ -89,14 +123,28 @@ class ReportInfo(BaseModel):
     verification: Optional[dict] = None
 
 # Load settings
-def load_settings():
-    settings_path = Path(__file__).parent.parent / "settings.json"
-    if settings_path.exists():
-        with open(settings_path) as f:
-            return json.load(f)
-    return {}
-
+from pipeline.config import load_settings, save_settings
 settings = load_settings()
+
+# API Key Authentication
+API_KEY_NAME = "X-API-Key"
+api_key_header = APIKeyHeader(name=API_KEY_NAME, auto_error=False)
+
+def verify_api_key(api_key: Optional[str]):
+    if not api_key:
+        return False
+    valid_key = settings.get("api_key", os.environ.get("LABGEN_API_KEY", "dev-secret-key"))
+    return api_key == valid_key
+
+def get_api_key(api_key_header: Optional[str] = Security(api_key_header)):
+    if verify_api_key(api_key_header):
+        return api_key_header
+    raise HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Invalid or missing API Key",
+    )
+
+api_key_dep = Depends(get_api_key)
 
 # Load classifier
 classifier, feature_names = None, None
@@ -106,32 +154,61 @@ if settings.get("verification", {}).get("enabled"):
     if classifier_path.exists() and feature_names_path.exists():
         classifier, feature_names = load_classifier(str(classifier_path), str(feature_names_path))
 
+class WSPayload(BaseModel):
+    type: str
+    reportId: Optional[str] = None
+    payload: Optional[GenerateRequest] = None
+
 # WebSocket endpoint
-@app.websocket("/ws/{client_id}")
-async def websocket_endpoint(websocket: WebSocket, client_id: str):
+@app.websocket("/ws")
+async def websocket_endpoint(websocket: WebSocket, api_key: str = None):
+    from pydantic import ValidationError
+    if not verify_api_key(api_key):
+        await websocket.close(code=1008)
+        return
+    client_id = str(uuid.uuid4())
     await manager.connect(websocket, client_id)
     try:
         while True:
             data = await websocket.receive_text()
-            # Handle incoming messages if needed
+            try:
+                msg_dict = json.loads(data)
+                msg = WSPayload(**msg_dict)
+                if msg.type == "generate":
+                    report_id = msg.reportId or f"report_{uuid.uuid4().hex[:8]}"
+                    params = msg.payload.dict() if msg.payload else {}
+                    asyncio.create_task(run_generation_with_progress(websocket, report_id, params))
+            except json.JSONDecodeError:
+                pass
+            except ValidationError as e:
+                await websocket.send_text(json.dumps({"type": "error", "message": f"Validation error: {e}"}))
     except WebSocketDisconnect:
         manager.disconnect(client_id)
 
 # REST endpoints
 @app.get("/api/health")
 async def health_check():
+    import shutil
+    from pipeline.config import get_api_key
+    
+    services = {
+        "labgen": "ready",
+        "verification": "ready" if classifier else "disabled",
+        "freecad": "ready" if shutil.which("freecadcmd") else "missing",
+        "ngspice": "ready" if shutil.which("ngspice") else "missing",
+        "pdflatex": "ready" if shutil.which("pdflatex") else "missing",
+        "api_key": "configured" if get_api_key() else "missing",
+    }
+    
+    status = "healthy" if all(v in ["ready", "disabled", "configured"] for v in services.values()) else "degraded"
+    
     return {
-        "status": "healthy",
+        "status": status,
         "version": "2.4.1",
-        "services": {
-            "labgen": "ready",
-            "verification": "ready" if classifier else "disabled",
-            "rag": "ready",
-            "freecad": "ready",
-        }
+        "services": services
     }
 
-@app.get("/api/reports", response_model=List[ReportInfo])
+@app.get("/api/reports", response_model=List[ReportInfo], dependencies=[api_key_dep])
 async def list_reports():
     runs_dir = Path(__file__).parent.parent / "runs"
     reports = []
@@ -166,7 +243,7 @@ async def list_reports():
                 ))
     return reports
 
-@app.post("/api/generate")
+@app.post("/api/generate", dependencies=[api_key_dep])
 async def generate_report(request: GenerateRequest, background_tasks: BackgroundTasks):
     """Start report generation"""
     report_id = f"report_{uuid.uuid4().hex[:8]}"
@@ -179,7 +256,10 @@ async def generate_report(request: GenerateRequest, background_tasks: Background
     }
 
 @app.websocket("/ws/generate/{report_id}")
-async def generate_websocket(websocket: WebSocket, report_id: str):
+async def generate_websocket(websocket: WebSocket, report_id: str, api_key: str = None):
+    if not verify_api_key(api_key):
+        await websocket.close(code=1008)
+        return
     await websocket.accept()
     try:
         # Receive generation parameters
@@ -300,7 +380,7 @@ async def run_generation_with_progress(websocket: WebSocket, report_id: str, par
             "message": str(e)
         }))
 
-@app.post("/api/verify")
+@app.post("/api/verify", dependencies=[api_key_dep])
 async def verify_report(request: VerifyRequest):
     """Verify an existing report"""
     try:
@@ -317,7 +397,7 @@ async def verify_report(request: VerifyRequest):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-@app.get("/api/reports/{report_id}/pdf")
+@app.get("/api/reports/{report_id}/pdf", dependencies=[api_key_dep])
 async def get_report_pdf(report_id: str):
     """Serve the generated PDF"""
     runs_dir = Path(__file__).parent.parent / "runs"
@@ -328,17 +408,15 @@ async def get_report_pdf(report_id: str):
                 return FileResponse(pdf_files[0], media_type="application/pdf")
     raise HTTPException(status_code=404, detail="Report not found")
 
-@app.get("/api/settings")
+@app.get("/api/settings", dependencies=[api_key_dep])
 async def get_settings():
     return settings
 
-@app.post("/api/settings")
+@app.post("/api/settings", dependencies=[api_key_dep])
 async def update_settings(new_settings: dict):
     global settings
     settings.update(new_settings)
-    settings_path = Path(__file__).parent.parent / "settings.json"
-    with open(settings_path, "w") as f:
-        json.dump(settings, f, indent=2)
+    save_settings(settings)
     return {"status": "updated"}
 
 # Serve frontend in production

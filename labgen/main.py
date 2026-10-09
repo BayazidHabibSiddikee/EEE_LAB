@@ -1,3 +1,7 @@
+import logging
+logging.basicConfig(level=logging.INFO, format="%(message)s")
+logger = logging.getLogger(__name__)
+
 import argparse
 import os
 import datetime
@@ -13,6 +17,27 @@ from pipeline.research import get_hybrid_research_context, save_research_context
 from pipeline.rag import build_rag_index
 from pipeline.cad import design_cad_agent
 from pipeline.verify import run_all_checks, write_report, extract_features
+
+def validate_schemdraw_ast(code):
+    import ast
+    try:
+        tree = ast.parse(code)
+    except SyntaxError:
+        return False
+    for node in ast.walk(tree):
+        if isinstance(node, (ast.Import, ast.ImportFrom)):
+            return False
+        if isinstance(node, ast.Name) and node.id in ['eval', 'exec', 'open', '__import__', 'globals', 'locals']:
+            return False
+        if isinstance(node, ast.Attribute) and node.attr.startswith('__'):
+            return False
+    return True
+
+def sanitize_netlist_comp(comp):
+    import re
+    if re.search(r'(;|\||&|`|\$|shell\s)', comp, re.IGNORECASE) or '.control' in comp.lower():
+        return "* [SANITIZED]"
+    return comp
 
 def draw_triac_circuit(output_path):
     with schemdraw.Drawing(file=output_path, show=False) as d:
@@ -55,7 +80,7 @@ Ig 0 3 DC 5m
     return cir_path, txt_out
 
 def execute_dynamic_circuit(run_dir, exp_name, circuit_prompt):
-    print("Generating dynamic circuit design via LLM...")
+    logger.info("Generating dynamic circuit design via LLM...")
     circuit_json = generate_circuit_design(exp_name, circuit_prompt)
 
     cir_path = os.path.join(run_dir, "dynamic.cir")
@@ -73,7 +98,7 @@ def execute_dynamic_circuit(run_dir, exp_name, circuit_prompt):
 
     netlist_content += "* Circuit\n"
     for comp in circuit_json.get("netlist_components", []):
-        netlist_content += f"{comp}\n"
+        netlist_content += f"{sanitize_netlist_comp(comp)}\n"
 
     netlist_content += f"""
 * Analysis
@@ -108,15 +133,18 @@ def execute_dynamic_circuit(run_dir, exp_name, circuit_prompt):
                 "elm": elm
             }
             local_vars = {}
-            exec(schemdraw_code, safe_globals, local_vars)
-            if 'draw_circuit' in local_vars:
-                local_vars['draw_circuit'](schem_path)
+            if validate_schemdraw_ast(schemdraw_code):
+                exec(schemdraw_code, safe_globals, local_vars)
+                if 'draw_circuit' in local_vars:
+                    local_vars['draw_circuit'](schem_path)
+                else:
+                    draw_triac_circuit(schem_path)
             else:
                 draw_triac_circuit(schem_path)
         else:
             draw_triac_circuit(schem_path)
     except Exception as e:
-        print(f"Error executing schemdraw_code: {e}")
+        logger.error(f"Error executing schemdraw_code: {e}")
         draw_triac_circuit(schem_path)
 
     return cir_path, txt_out, schem_path, circuit_json
@@ -157,7 +185,7 @@ def _build_data_table_from_simulation(txt_out: str) -> str:
 \\end{{table}}"""
         return table
     except Exception as e:
-        print(f"Error building data table: {e}")
+        logger.error(f"Error building data table: {e}")
         return ""
 
 def run_generation(args, settings):
@@ -167,12 +195,12 @@ def run_generation(args, settings):
     os.makedirs(os.path.join(run_dir, "figs"), exist_ok=True)
     os.makedirs(os.path.join(run_dir, "sim"), exist_ok=True)
 
-    print(f"--- Running LabGen for: {args.name} ---")
+    logger.info(f"--- Running LabGen for: {args.name} ---")
 
-    print("Initializing RAG index...")
+    logger.info("Initializing RAG index...")
     build_rag_index()
 
-    print("Running LangGraph pipeline...")
+    logger.info("Running LangGraph pipeline...")
     from pipeline.graph import run_pipeline
 
     circuit_prompt = args.circuit_prompt if args.circuit_prompt else ""
@@ -181,7 +209,7 @@ def run_generation(args, settings):
     circuit_json = graph_result.get("circuit_json", {})
     llm_sections = graph_result.get("report_sections", {})
 
-    print("Executing dynamic circuit...")
+    logger.info("Executing dynamic circuit...")
     cir_path = os.path.join(run_dir, "dynamic.cir")
     txt_out = os.path.join(run_dir, "iv_data.txt")
     schem_path = os.path.join(run_dir, "figs", "schematic.png")
@@ -198,11 +226,11 @@ def run_generation(args, settings):
 
     netlist_content += "* Circuit\n"
     for comp in circuit_json.get("netlist_components", []):
-        netlist_content += f"{comp}\n"
+        netlist_content += f"{sanitize_netlist_comp(comp)}\n"
 
 
     # Extract components and find a resistor to vary
-    comps = circuit_json.get("netlist_components", [])
+    comps = [sanitize_netlist_comp(c) for c in circuit_json.get("netlist_components", [])]
     var_res_idx = -1
     for i, c in enumerate(comps):
         if c.strip().upper().startswith("R"):
@@ -269,7 +297,7 @@ def run_generation(args, settings):
                 pass
 
     if not success_sim:
-        print("Dynamic circuit failed, falling back to static triac circuit...")
+        logger.warning("Dynamic circuit failed, falling back to static triac circuit...")
         cir_file, fb_txt_out = create_triac_netlist(run_dir)
         subprocess.run(["ngspice", "-b", cir_file], capture_output=True)
         try:
@@ -308,27 +336,30 @@ def run_generation(args, settings):
                 "elm": elm
             }
             local_vars = {}
-            exec(schemdraw_code, safe_globals, local_vars)
-            if 'draw_circuit' in local_vars:
-                local_vars['draw_circuit'](schem_path)
+            if validate_schemdraw_ast(schemdraw_code):
+                exec(schemdraw_code, safe_globals, local_vars)
+                if 'draw_circuit' in local_vars:
+                    local_vars['draw_circuit'](schem_path)
+                else:
+                    draw_triac_circuit(schem_path)
             else:
                 draw_triac_circuit(schem_path)
         else:
             draw_triac_circuit(schem_path)
     except Exception as e:
-        print(f"Error executing schemdraw_code: {e}")
+        logger.error(f"Error executing schemdraw_code: {e}")
         draw_triac_circuit(schem_path)
 
-    print("Scraping theory reference images (if enabled)...")
+    logger.info("Scraping theory reference images (if enabled)...")
     theory_img_path = ""
     if settings.get("scraper", {}).get("enabled"):
         try:
             from pipeline.scraper_integration import get_theory_image
             theory_img_path = get_theory_image(args.name + " electronic device", run_dir)
         except Exception as e:
-            print(f"Scraper integration failed: {e}")
+            logger.error(f"Scraper integration failed: {e}")
 
-    print("Assembling LaTeX report...")
+    logger.info("Assembling LaTeX report...")
     config = load_config()
 
     research_context = get_hybrid_research_context(args.name, use_rag=True, use_web=True)
@@ -397,7 +428,7 @@ def run_generation(args, settings):
     compile_pdf(tex_out, run_dir)
 
     if settings.get("verification", {}).get("enabled", True):
-        print("Running verification...")
+        logger.info("Running verification...")
         report_bundle = {
             "experiment_name": args.name,
             "sections": sections,
@@ -410,15 +441,15 @@ def run_generation(args, settings):
         results = run_all_checks(report_bundle)
         write_report(results, os.path.join(run_dir, "verification_report.json"))
 
-    print("Done!")
+    logger.info("Done!")
 
 def run_verification(args, settings):
     if args.input.endswith(".pdf"):
         from pipeline.ingest import extract_pdf
-        print(f"Extracting PDF: {args.input}")
+        logger.info(f"Extracting PDF: {args.input}")
         extracted = extract_pdf(args.input)
         if "error" in extracted:
-            print(f"Error: {extracted['error']}")
+            logger.error(f"Error: {extracted['error']}")
             return
 
         sections = extracted.get("sections", {})
@@ -443,7 +474,7 @@ def run_verification(args, settings):
                 tex_file = os.path.join(run_dir, f)
                 break
         if not tex_file:
-            print("No .tex file found in run directory")
+            logger.warning("No .tex file found in run directory")
             return
 
         with open(tex_file, "r") as f:
@@ -484,7 +515,7 @@ def run_verification(args, settings):
             "plots": []
         }
 
-    print("Running verification...")
+    logger.info("Running verification...")
     results = run_all_checks(report_bundle)
 
     print(json.dumps(results, indent=2))
@@ -499,14 +530,14 @@ def run_index(args, settings):
     from pipeline.rag import build_rag_index
     from pipeline.cad import design_cad_agent, get_rag_context
     if args.rebuild:
-        print("Rebuilding RAG index...")
+        logger.info("Rebuilding RAG index...")
         build_rag_index(force_rebuild=True)
     else:
-        print("Loading/building RAG index...")
+        logger.info("Loading/building RAG index...")
         build_rag_index()
     
     if args.query:
-        print(f"\nQuery: {args.query}")
+        logger.info(f"\nQuery: {args.query}")
         print(get_rag_context(args.query, top_k=args.top_k))
 
 def main():
@@ -532,9 +563,8 @@ def main():
 
     args = parser.parse_args()
 
-    settings_path = os.path.join(os.path.dirname(__file__), "settings.json")
-    with open(settings_path, "r") as f:
-        settings = json.load(f)
+    from pipeline.config import load_settings, get_api_key
+    settings = load_settings()
 
     # Commands that don't need API key
     if args.command in ("index", "verify"):
@@ -544,13 +574,10 @@ def main():
             run_verification(args, settings)
         return
 
-    api_key = settings.get("llm", {}).get("api_key")
+    api_key = get_api_key()
     if not api_key or api_key == "YOUR_API_KEY":
-        if os.environ.get("GEMINI_API_KEY"):
-            api_key = os.environ.get("GEMINI_API_KEY")
-        else:
-            print("Error: Please configure your API key in settings.json or export GEMINI_API_KEY.")
-            return
+        logger.error("Error: Please configure your API key in settings.json or export GEMINI_API_KEY.")
+        return
     os.environ["GEMINI_API_KEY"] = api_key
 
     if args.command == "generate":

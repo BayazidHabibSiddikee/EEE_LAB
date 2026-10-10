@@ -30,17 +30,21 @@
     \centering
     \vspace*{1cm}
     
+    {% if config.university %}
     \Large \textbf{\MakeUppercase{ {{ config.university }} }} \\
     \vspace{0.5cm}
+    {% endif %}
+    {% if config.department %}
     \large \textbf{\MakeUppercase{ {{ config.department }} }} \\
-    
     \vspace{2.5cm}
+    {% endif %}
+    
     \Large \textbf{LABORATORY REPORT} \\
     \vspace{1cm}
     
     \begin{tabular}{ll}
-        \textbf{Course No:} & {{ config.course_code }} \\
-        \textbf{Course Title:} & {{ config.course_name }} \\
+        \textbf{Course No:} & {{ config.course_code if config.course_code else "—" }} \\
+        \textbf{Course Title:} & {{ config.course_name if config.course_name else "—" }} \\
     \end{tabular}
     
     \vspace{2cm}
@@ -55,20 +59,24 @@
     \begin{minipage}[t]{0.4\textwidth}
         \begin{flushleft} \large
             \emph{Submitted by:}\\
-            {{ config.student.name }} \\
-            Roll: {{ config.student.roll }} \\
-            Section: {{ config.student.section }}, Group: {{ config.student.group }}
+            {% if config.student.name %}{{ config.student.name }} \\{% endif %}
+            {% if config.student.roll %}Roll: {{ config.student.roll }} \\{% endif %}
+            {% if config.student.section or config.student.group %}Section: {{ config.student.section if config.student.section else "—" }}, Group: {{ config.student.group if config.student.group else "—" }}{% endif %}
         \end{flushleft}
     \end{minipage}
     \hfill
     \begin{minipage}[t]{0.5\textwidth}
         \begin{flushright} \large
             \emph{Submitted to:} \\
+            {% if config.teachers %}
             {% for teacher in config.teachers %}
-            {{ teacher.name }} \\
-            {{ teacher.designation }} \\
+            {% if teacher.name %}{{ teacher.name }} \\{% endif %}
+            {% if teacher.designation %}{{ teacher.designation }}{% if not loop.last %} \\{% endif %}{% endif %}
             {% if not loop.last %}\vspace{0.3cm}{% endif %}
             {% endfor %}
+            {% else %}
+            — \\
+            {% endif %}
         \end{flushright}
     \end{minipage}
 

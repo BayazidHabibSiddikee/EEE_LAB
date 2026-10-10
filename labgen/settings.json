@@ -3,7 +3,7 @@
     "provider": "openai",
     "base_url": "https://router.bynara.id/v1",
     "api_key": "${LABGEN_API_KEY}",
-    "model": "agnes-3-flash",
+    "model": "nemotron-3-ultra-free",
     "temperature": 0.2
   },
   "verification": {

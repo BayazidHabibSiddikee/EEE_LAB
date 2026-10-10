@@ -1,21 +1,26 @@
 import { useState, useRef, useEffect } from 'react';
 import { cn } from '../../lib/utils';
-import { FileText, Code2, Box, Download, ChevronRight, Image, Zap, RotateCcw } from 'lucide-react';
+import { FileText, Code2, Box, Download, ChevronRight, Image, Zap, RotateCcw, Sparkles } from 'lucide-react';
 import { Asset } from '../../types/pipeline';
+import { ChatWorkspace, CircuitProposal } from './ChatWorkspace';
+
+export type WorkspaceTab = 'chat' | 'preview' | 'code' | '3d' | 'simulation';
 
 interface CenterWorkspaceProps {
   assets: Asset[];
   markdownContent: string;
   latexContent: string;
   cadModelUrl?: string;
-  activeTab: 'preview' | 'code' | '3d' | 'simulation';
-  onTabChange: (tab: 'preview' | 'code' | '3d' | 'simulation') => void;
+  activeTab: WorkspaceTab;
+  onTabChange: (tab: WorkspaceTab) => void;
   onAssetDownload: (asset: Asset) => void;
   isGenerating: boolean;
   simulationImages: string[];
+  onConfirmBuild: (proposal: CircuitProposal) => void;
 }
 
 const TABS = [
+  { id: 'chat', label: 'AI Co-Pilot', icon: Sparkles },
   { id: 'preview', label: 'Report', icon: FileText },
   { id: 'code', label: 'Source', icon: Code2 },
   { id: 'simulation', label: 'Simulation', icon: Zap },
@@ -31,7 +36,8 @@ export function CenterWorkspace({
   onTabChange, 
   onAssetDownload,
   isGenerating,
-  simulationImages
+  simulationImages,
+  onConfirmBuild
 }: CenterWorkspaceProps) {
   const [assetDrawerOpen, setAssetDrawerOpen] = useState(false);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
@@ -80,6 +86,9 @@ export function CenterWorkspace({
 
       {/* Tab Content */}
       <div className="flex-1 overflow-hidden relative">
+        {activeTab === 'chat' && (
+          <ChatWorkspace onConfirmBuild={onConfirmBuild} isGenerating={isGenerating} />
+        )}
         {activeTab === 'preview' && (
           <MarkdownPreview content={markdownContent} isGenerating={isGenerating} />
         )}

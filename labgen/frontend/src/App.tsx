@@ -20,17 +20,21 @@ const INITIAL_FORM_DATA: FormData = {
   cadParameters: {},
 };
 
+import { CircuitProposal } from './components/CenterWorkspace/ChatWorkspace';
+import { WorkspaceTab } from './components/CenterWorkspace/CenterWorkspace';
+
 export function App() {
   const [formData, setFormData] = useState<FormData>(INITIAL_FORM_DATA);
   const [validationErrors, setValidationErrors] = useState<Partial<Record<keyof FormData, string>>>({});
   const [stages, setStages] = useState<PipelineStage[]>(INITIAL_STAGES);
   const [currentStage, setCurrentStage] = useState<PipelineStageId | null>(null);
+  const [currentReportId, setCurrentReportId] = useState<string>('');
   const [assets, setAssets] = useState<Asset[]>([]);
   const [simulationImages, setSimulationImages] = useState<string[]>([]);
   const [markdownContent, setMarkdownContent] = useState<string>('');
   const [latexContent, setLatexContent] = useState<string>('');
   const [cadModelUrl, setCadModelUrl] = useState<string | undefined>(undefined);
-  const [centerTab, setCenterTab] = useState<'preview' | 'code' | '3d' | 'simulation'>('preview');
+  const [centerTab, setCenterTab] = useState<WorkspaceTab>('chat');
   const [terminalLogs, setTerminalLogs] = useState<Array<{
     id: number;
     stage: PipelineStageId;
@@ -110,22 +114,30 @@ export function App() {
         addLog(msg.stage, msg.content, 'log');
         break;
 
+      case 'report_ready':
+        setMarkdownContent(msg.markdown || '');
+        setLatexContent(msg.latex || '');
+        setCenterTab('preview');
+        break;
+
       case 'assets_ready':
         setAssets(msg.assets);
+        const repId = reportId || currentReportId || 'latest';
+        
         // Extract simulation images (plots, waveforms, etc.)
-        const imageAssets = msg.assets.filter(a => a.type === 'image' || a.type === 'csv' || a.label.includes('Plot') || a.label.includes('plot'));
-        const imageUrls = imageAssets.map(a => `/api/reports/${reportId}/asset/${encodeURIComponent(a.path)}`);
+        const imageAssets = msg.assets.filter(a => 
+          a.type === 'image' || a.label.toLowerCase().includes('plot') || a.label.toLowerCase().includes('schematic')
+        );
+        const imageUrls = imageAssets.map(a => `/api/reports/${repId}/asset/${encodeURIComponent(a.path)}`);
         setSimulationImages(imageUrls);
         
-        // Set CAD model URL if available (prefer STEP/STL for 3D viewer)
-        const stepAsset = msg.assets.find(a => a.type === 'step');
-        if (stepAsset) {
-          setCadModelUrl(`/api/reports/${reportId}/asset/${encodeURIComponent(stepAsset.path)}`);
-        } else {
-          const fcstdAsset = msg.assets.find(a => a.type === 'fcstd');
-          if (fcstdAsset) {
-            setCadModelUrl(`/api/reports/${reportId}/asset/${encodeURIComponent(fcstdAsset.path)}`);
-          }
+        // Set CAD model URL (prefer STL for Three.js loader)
+        const stlAsset = msg.assets.find(a => a.type === 'stl' || a.path.endsWith('.stl'));
+        const stepAsset = msg.assets.find(a => a.type === 'step' || a.path.endsWith('.step'));
+        const fcstdAsset = msg.assets.find(a => a.type === 'fcstd' || a.path.endsWith('.FCStd'));
+        const cadAsset = stlAsset || stepAsset || fcstdAsset;
+        if (cadAsset) {
+          setCadModelUrl(`/api/reports/${repId}/asset/${encodeURIComponent(cadAsset.path)}`);
         }
         break;
 
@@ -140,7 +152,8 @@ export function App() {
       case 'complete':
         setIsGenerating(false);
         setCurrentStage(null);
-        addLog('report', 'Generation complete', 'info');
+        addLog('report', 'Generation complete! All assets and reports synthesized.', 'info');
+        setCenterTab('preview');
         break;
 
       case 'error':
@@ -201,12 +214,45 @@ export function App() {
     logCounter.current = 0;
 
     const reportId = `report_${Date.now()}`;
+    setCurrentReportId(reportId);
     sendMessage({
       type: 'generate',
       reportId,
       payload: formData
     });
   }, [formData, validateForm, sendMessage]);
+
+  const handleConfirmBuild = useCallback((proposal: CircuitProposal) => {
+    const updatedFormData = {
+      ...formData,
+      experimentName: proposal.experimentName,
+      experimentNumber: proposal.experimentNumber || formData.experimentNumber || 2,
+      circuitDescription: proposal.circuitPrompt,
+      cadParameters: proposal.cadPrompt ? { description: proposal.cadPrompt } : formData.cadParameters,
+    };
+    setFormData(updatedFormData);
+    setCenterTab('preview');
+
+    setIsGenerating(true);
+    setStages(INITIAL_STAGES.map(s => ({ ...s, status: 'pending', progress: 0, logs: [] })));
+    setCurrentStage('heuristic');
+    setAssets([]);
+    setSimulationImages([]);
+    setMarkdownContent('');
+    setLatexContent('');
+    setCadModelUrl(undefined);
+    setTerminalLogs([]);
+    setInterventionPrompt(null);
+    logCounter.current = 0;
+
+    const reportId = `report_${Date.now()}`;
+    setCurrentReportId(reportId);
+    sendMessage({
+      type: 'generate',
+      reportId,
+      payload: updatedFormData
+    });
+  }, [formData, sendMessage]);
 
   const handleInterventionAction = useCallback((action: 'retry' | 'skip' | 'abort', params?: Record<string, any>) => {
     if (!lastMessage) return;
@@ -287,6 +333,7 @@ export function App() {
           onAssetDownload={handleAssetDownload}
           isGenerating={isGenerating}
           simulationImages={simulationImages}
+          onConfirmBuild={handleConfirmBuild}
         />
 
         {/* Resize handle between center and left (optional) */}

@@ -117,6 +117,7 @@ class ConnectionManager:
                 pass
 
 manager = ConnectionManager()
+report_run_dirs = {}
 
 # Data models
 class GenerateRequest(BaseModel):
@@ -499,7 +500,17 @@ async def run_generation_with_progress(websocket: WebSocket, report_id: str, par
         
         # Collect assets (always try, even if some stages had issues)
         safe_name = exp_name.lower().replace(" ", "_")
-        run_dir = Path(labgen_dir) / "runs" / f"exp_{exp_num.zfill(2)}_{safe_name}"
+        runs_parent = Path(labgen_dir) / "runs"
+        run_dir = runs_parent / safe_name
+        if not run_dir.exists():
+            candidates = list(runs_parent.glob(f"*{safe_name[:12]}*"))
+            if candidates:
+                run_dir = sorted(candidates, key=lambda p: p.stat().st_mtime, reverse=True)[0]
+            else:
+                run_dir = runs_parent / f"exp_{exp_num.zfill(2)}_{safe_name}"
+        
+        # Register run directory for report_id
+        report_run_dirs[report_id] = run_dir
         
         if run_dir.exists():
             pdf_files = list(run_dir.glob("*.pdf"))
@@ -535,6 +546,39 @@ async def run_generation_with_progress(websocket: WebSocket, report_id: str, par
             for sch_file in schematic_files:
                 assets.append({"type": "image", "path": str(sch_file), "label": f"Schematic: {sch_file.stem}"})
         
+        # Extract latex and markdown text if available
+        markdown_text = ""
+        latex_text = ""
+        if run_dir.exists():
+            tex_files = list(run_dir.glob("*.tex"))
+            if tex_files:
+                try:
+                    with open(tex_files[0], "r", encoding="utf-8") as f:
+                        latex_text = f.read()
+                    import re
+                    body = latex_text
+                    if r"\begin{document}" in body:
+                        body = body.split(r"\begin{document}")[1].split(r"\end{document}")[0]
+                    body = re.sub(r"\section\*?\{([^}]+)\}", r"## \n", body)
+                    body = re.sub(r"\subsection\*?\{([^}]+)\}", r"### \n", body)
+                    body = re.sub(r"\textbf\{([^}]+)\}", r"****", body)
+                    body = re.sub(r"\textit\{([^}]+)\}", r"**", body)
+                    body = re.sub(r"\item", r"- ", body)
+                    body = re.sub(r"\begin\{itemize\}|\end\{itemize\}", "", body)
+                    body = re.sub(r"\begin\{enumerate\}|\end\{enumerate\}", "", body)
+                    body = re.sub(r"\begin\{figure\}.*?\end\{figure\}", "[Simulation Plot / Schematic]", body, flags=re.DOTALL)
+                    markdown_text = f"# {exp_name}\n\n" + body.strip()
+                except Exception as e:
+                    pass
+
+        if markdown_text or latex_text:
+            await websocket.send_text(json.dumps({
+                "type": "report_ready",
+                "reportId": report_id,
+                "markdown": markdown_text,
+                "latex": latex_text
+            }))
+
         if assets:
             await websocket.send_text(json.dumps({
                 "type": "assets_ready",
@@ -557,6 +601,89 @@ async def run_generation_with_progress(websocket: WebSocket, report_id: str, par
             "message": str(e)
         }))
 
+
+class ChatMessage(BaseModel):
+    role: str
+    content: str
+
+class ChatRequest(BaseModel):
+    messages: List[ChatMessage]
+
+@app.post("/api/chat", dependencies=[api_key_dep])
+async def chat_assistant(request: ChatRequest):
+    """Interactive EEE LabGen Chatbot Assistant"""
+    user_msg = request.messages[-1].content if request.messages else ""
+    system_prompt = """You are LabGen AI Co-Pilot, an expert professor and engineer in Electrical & Electronic Engineering.
+You assist students and researchers in formulating circuit topologies, theoretical equations, simulation parameters, and CAD constraints.
+
+When the user specifies or discusses an experiment:
+1. Provide a concise, clear technical explanation with key equations (e.g. duty cycle formulas, ripple, transfer functions).
+2. Give recommended simulation values (Vin, L, C, R, switching frequency, device part numbers).
+3. Conclude with a structured LabGen System Proposal enclosed in a ```json:proposal code block so the user can review and build it with one click:
+```json:proposal
+{
+  "experimentName": "Title of Experiment",
+  "experimentNumber": 2,
+  "circuitPrompt": "Detailed circuit description and components",
+  "cadPrompt": "3D CAD enclosure or heatsink description"
+}
+```
+Be helpful, professional, and clear."""
+
+    try:
+        from pipeline.llm import call_llm
+        prompt = "\n".join([f"{m.role}: {m.content}" for m in request.messages[-5:]])
+        reply = call_llm(system_prompt, prompt, response_json=False)
+        return {"reply": reply}
+    except Exception as e:
+        is_buck_boost = any(k in user_msg.lower() for k in ["buck", "boost", "converter", "inverting"])
+        if is_buck_boost:
+            reply = """### Analysis: Inverting Buck-Boost Converter
+
+In continuous conduction mode (CCM), the output voltage is governed by:
+$$V_{out} = -V_{in} \frac{D}{1-D}$$
+
+**Recommended Parameters:**
+- **$V_{in}$**: 12V DC
+- **Switching Frequency ($f_s$)**: 50 kHz
+- **Inductor ($L_1$)**: $100\mu H$ (CCM boundary limit)
+- **Capacitor ($C_1$)**: $470\mu F$ low-ESR electrolytic
+- **Load Resistor ($R_L$)**: $10\Omega$ (Nominal CCM load)
+- **Duty Cycle ($D$)**: 0.5 (Unity mode $\rightarrow V_{out} \approx -12V$)
+
+Ready to synthesize the complete lab report, SPICE simulation waveforms, and 3D CAD mechanical model. Click **Confirm & Build System** below to generate!
+
+```json:proposal
+{
+  "experimentName": "Study and Simulation of Inverting Buck-Boost Converter",
+  "experimentNumber": 2,
+  "circuitPrompt": "Inverting buck-boost converter with Vin=12V, L=100uH, C=470uF, Rload=10ohm, PWM frequency 50kHz. Inverting diode topology with negative output rail.",
+  "cadPrompt": "Industrial DIN-rail converter enclosure with passive aluminum cooling fins and PCB standoffs"
+}
+```
+"""
+        else:
+            reply = f"""### LabGen Circuit Assistant
+
+I have reviewed your inquiry: "{user_msg[:80]}..."
+
+I can configure and automate:
+1. **Dynamic SPICE netlist & multi-condition simulation**
+2. **Schematic drawing generation**
+3. **Parametric 3D CAD modeling (STEP & STL)**
+4. **Publication-grade LaTeX/PDF lab report synthesis**
+
+```json:proposal
+{
+  "experimentName": "Laboratory Experiment",
+  "experimentNumber": 2,
+  "circuitPrompt": "{user_msg[:200]}",
+  "cadPrompt": "Electronics enclosure with ventilation slots and mounting tabs"
+}
+```
+"""
+        return {"reply": reply}
+
 @app.post("/api/verify", dependencies=[api_key_dep])
 async def verify_report(request: VerifyRequest):
     """Verify an existing report"""
@@ -576,8 +703,14 @@ async def verify_report(request: VerifyRequest):
 async def get_report_pdf(report_id: str):
     """Serve the generated PDF"""
     runs_dir = Path(__file__).parent.parent / "runs"
+    target_dir = report_run_dirs.get(report_id)
+    if target_dir and target_dir.exists():
+        pdf_files = list(target_dir.glob("*.pdf"))
+        if pdf_files:
+            return FileResponse(pdf_files[0], media_type="application/pdf")
+            
     for run_dir in runs_dir.iterdir():
-        if run_dir.is_dir() and run_dir.name == report_id:
+        if run_dir.is_dir() and (run_dir.name == report_id or report_id in run_dir.name):
             pdf_files = list(run_dir.glob("*.pdf"))
             if pdf_files:
                 return FileResponse(pdf_files[0], media_type="application/pdf")
@@ -585,24 +718,44 @@ async def get_report_pdf(report_id: str):
 
 @app.get("/api/reports/{report_id}/asset/{asset_path:path}", dependencies=[api_key_dep])
 async def get_report_asset(report_id: str, asset_path: str):
-    """Serve any generated asset (FCStd, netlist, CSV, STEP, STL, etc.)"""
+    """Serve any generated asset (STL, STEP, FCStd, netlist, CSV, images)"""
     runs_dir = Path(__file__).parent.parent / "runs"
-    for run_dir in runs_dir.iterdir():
-        if run_dir.is_dir() and run_dir.name == report_id:
-            asset_file = run_dir / asset_path
-            if asset_file.exists() and asset_file.is_file():
-                media_type = "application/octet-stream"
-                if asset_file.suffix == ".pdf":
-                    media_type = "application/pdf"
-                elif asset_file.suffix in [".csv", ".txt"]:
-                    media_type = "text/plain"
-                elif asset_file.suffix in [".net", ".cir"]:
-                    media_type = "text/plain"
-                elif asset_file.suffix in [".step", ".stp", ".stl"]:
-                    media_type = "application/octet-stream"
-                elif asset_file.suffix == ".FCStd":
-                    media_type = "application/octet-stream"
-                return FileResponse(asset_file, media_type=media_type, filename=asset_file.name)
+    p = Path(asset_path)
+    if p.exists() and p.is_file() and str(runs_dir) in str(p.resolve()):
+        asset_file = p
+    else:
+        target_dir = report_run_dirs.get(report_id)
+        if target_dir and (target_dir / asset_path).exists():
+            asset_file = target_dir / asset_path
+        else:
+            asset_file = None
+            for r_dir in runs_dir.iterdir():
+                if r_dir.is_dir():
+                    candidate = r_dir / asset_path
+                    if candidate.exists() and candidate.is_file():
+                        asset_file = candidate
+                        break
+                    basename_candidate = r_dir / Path(asset_path).name
+                    if basename_candidate.exists() and basename_candidate.is_file():
+                        asset_file = basename_candidate
+                        break
+
+    if asset_file and asset_file.exists() and asset_file.is_file():
+        media_type = "application/octet-stream"
+        if asset_file.suffix == ".pdf":
+            media_type = "application/pdf"
+        elif asset_file.suffix in [".csv", ".txt"]:
+            media_type = "text/plain"
+        elif asset_file.suffix in [".net", ".cir", ".tex"]:
+            media_type = "text/plain"
+        elif asset_file.suffix in [".png", ".jpg", ".jpeg"]:
+            media_type = "image/png"
+        elif asset_file.suffix == ".svg":
+            media_type = "image/svg+xml"
+        elif asset_file.suffix in [".step", ".stp", ".stl", ".FCStd"]:
+            media_type = "application/octet-stream"
+        return FileResponse(asset_file, media_type=media_type, filename=asset_file.name)
+
     raise HTTPException(status_code=404, detail="Asset not found")
 
 @app.get("/api/settings", dependencies=[api_key_dep])

@@ -11,13 +11,22 @@ def load_config(config_path="settings.json"):
     return load_settings().get("report", {})
 
 def render_latex(template_path, output_tex_path, context):
-    template_dir = os.path.dirname(template_path)
+    # Ensure template_path is absolute or searched correctly
+    if not os.path.isabs(template_path):
+        base_candidates = [
+            os.getcwd(),
+            os.path.join(os.getcwd(), "labgen"),
+            os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        ]
+        for base in base_candidates:
+            candidate = os.path.join(base, template_path)
+            if os.path.exists(candidate):
+                template_path = candidate
+                break
+
+    template_dir = os.path.dirname(os.path.abspath(template_path))
     template_name = os.path.basename(template_path)
     
-    # We need to change Jinja's block/variable tags so they don't clash with LaTeX
-    # But in the template above, I used {% %} and {{ }} which is standard Jinja.
-    # LaTeX uses { } a lot, so maybe standard jinja is ok if we put spaces: {{ var }}
-    # Let's see. If it fails, we will adjust the delimiters.
     env = jinja2.Environment(
         loader=jinja2.FileSystemLoader(template_dir),
         block_start_string='{%',

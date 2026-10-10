@@ -14,8 +14,8 @@ def get_llm_config() -> Dict[str, Any]:
     return load_settings().get("llm", {})
 
 @retry(
-    wait=wait_exponential(multiplier=2, min=10, max=120),
-    stop=stop_after_attempt(15),
+    wait=wait_exponential(multiplier=1.5, min=2, max=6),
+    stop=stop_after_attempt(2),
     retry=retry_if_exception_type((requests.exceptions.HTTPError, ValueError)),
     reraise=True,
     before_sleep=lambda retry_state: logger.warning(f"API Rate Limit hit, retrying in {retry_state.next_action.sleep}s... (attempt {retry_state.attempt_number})")
@@ -49,10 +49,15 @@ def call_llm(system_prompt: str, user_prompt: str, response_json: bool = True) -
         if response_json:
             payload["response_format"] = {"type": "json_object"}
         
-        resp = requests.post(f"{base_url}/chat/completions", headers=headers, json=payload, timeout=120)
+        resp = requests.post(f"{base_url}/chat/completions", headers=headers, json=payload, timeout=15)
         resp.raise_for_status()
         data = resp.json()
-        text = data["choices"][0]["message"]["content"]
+        if "choices" in data and len(data["choices"]) > 0:
+            text = data["choices"][0].get("message", {}).get("content", "")
+        elif "candidates" in data and len(data["candidates"]) > 0:
+            text = data["candidates"][0].get("content", {}).get("parts", [{}])[0].get("text", "")
+        else:
+            raise ValueError(f"Unrecognized LLM response format: {data}")
     
     elif "generativelanguage" in base_url or provider == "gemini":
         # Google Gemini API
@@ -80,10 +85,15 @@ def call_llm(system_prompt: str, user_prompt: str, response_json: bool = True) -
         }
         if response_json:
             payload["response_format"] = {"type": "json_object"}
-        resp = requests.post(f"{base_url}/chat/completions", headers=headers, json=payload, timeout=120)
+        resp = requests.post(f"{base_url}/chat/completions", headers=headers, json=payload, timeout=15)
         resp.raise_for_status()
         data = resp.json()
-        text = data["choices"][0]["message"]["content"]
+        if "choices" in data and len(data["choices"]) > 0:
+            text = data["choices"][0].get("message", {}).get("content", "")
+        elif "candidates" in data and len(data["candidates"]) > 0:
+            text = data["candidates"][0].get("content", {}).get("parts", [{}])[0].get("text", "")
+        else:
+            raise ValueError(f"Unrecognized LLM response format: {data}")
     
     # Clean up response
     if text is None:

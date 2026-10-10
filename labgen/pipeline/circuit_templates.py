@@ -14,7 +14,7 @@ def get_buck_boost_template(exp_name: str, prompt: str) -> Dict[str, Any]:
             "When the switch is closed, energy is stored in the magnetic field of the inductor while the diode is reverse-biased. "
             "When the switch opens, the inductor releases its stored energy through the diode into the capacitor and load resistor. "
             "Because of the counter-electromotive force, the output voltage polarity is inverted relative to the ground reference. "
-            "The conversion ratio in continuous conduction mode (CCM) is given by V_out = -V_in * (D / (1 - D))."
+            "The conversion ratio in continuous conduction mode (CCM) is given by $V_{\\text{out}} = -V_{\\text{in}} \\cdot \\frac{D}{1 - D}$."
         ),
         "apparatus": [
             {"name": "DC Regulated Power Supply (0-30V, 5A)", "quantity": "1"},

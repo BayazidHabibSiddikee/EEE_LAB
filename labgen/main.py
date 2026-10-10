@@ -391,14 +391,7 @@ def run_generation(args, settings):
     if circuit_json:
         sections["circuit_design"] = circuit_json.get("circuit_design_text", "")
 
-    if args.cad_prompt:
-        cad_step_path = os.path.join(run_dir, "cad_model.step")
-        success = design_cad_agent(args.cad_prompt, cad_step_path)
-        if success:
-            context["cad_img"] = os.path.abspath(cad_step_path.replace(".step", ".svg")).replace("\\", "/")
-
-        sections["apparatus"] = circuit_json.get("apparatus", [])
-    else:
+    if not args.cad_prompt:
         sections["circuit_design"] = "A variable DC voltage source is connected across the main terminals. A gate current is provided to trigger the device. The voltage is swept from negative to positive values."
         sections["apparatus"] = [
             {"name": "DC Power Supply (Variable)", "quantity": "1"},
@@ -406,6 +399,8 @@ def run_generation(args, settings):
             {"name": "Resistor ($1 k\\Omega$)", "quantity": "1"},
             {"name": "Multimeter", "quantity": "2"}
         ]
+    else:
+        sections["apparatus"] = circuit_json.get("apparatus", []) if circuit_json else []
 
     context = {
         "config": config,
@@ -420,6 +415,14 @@ def run_generation(args, settings):
             {"path": os.path.abspath(plot_path).replace('\\\\', '/') if plot_path else "", "caption": f"Simulated {args.name} Curve"}
         ]
     }
+
+    if args.cad_prompt:
+        cad_step_path = os.path.join(run_dir, "cad_model.step")
+        success = design_cad_agent(args.cad_prompt, cad_step_path)
+        if success:
+            cad_svg = os.path.abspath(cad_step_path.replace(".step", ".svg")).replace("\\", "/")
+            if os.path.exists(cad_svg):
+                context["cad_img"] = cad_svg
 
     pdf_filename = f"Exp_{args.exp:02d}_{slug}.tex"
     tex_out = os.path.join(run_dir, pdf_filename)

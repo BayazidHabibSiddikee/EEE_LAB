@@ -2,7 +2,7 @@
   "llm": {
     "provider": "openai",
     "base_url": "https://router.bynara.id/v1",
-    "api_key": "",
+    "api_key": "${LABGEN_API_KEY}",
     "model": "agnes-3-flash",
     "temperature": 0.2
   },

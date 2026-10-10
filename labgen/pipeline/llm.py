@@ -14,11 +14,11 @@ def get_llm_config() -> Dict[str, Any]:
     return load_settings().get("llm", {})
 
 @retry(
-    wait=wait_exponential(multiplier=2, min=4, max=60),
-    stop=stop_after_attempt(5),
+    wait=wait_exponential(multiplier=2, min=10, max=120),
+    stop=stop_after_attempt(15),
     retry=retry_if_exception_type((requests.exceptions.HTTPError, ValueError)),
     reraise=True,
-    before_sleep=lambda retry_state: logger.warning(f"API Rate Limit hit, retrying in {retry_state.next_action.sleep}s...")
+    before_sleep=lambda retry_state: logger.warning(f"API Rate Limit hit, retrying in {retry_state.next_action.sleep}s... (attempt {retry_state.attempt_number})")
 )
 def call_llm(system_prompt: str, user_prompt: str, response_json: bool = True) -> Dict[str, Any]:
     config = get_llm_config()

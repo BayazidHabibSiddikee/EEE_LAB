@@ -155,7 +155,8 @@ api_key_header = APIKeyHeader(name=API_KEY_NAME, auto_error=False)
 def verify_api_key(api_key: Optional[str]):
     if not api_key:
         return False
-    valid_key = settings.get("api_key", os.environ.get("LABGEN_API_KEY", "dev-secret-key"))
+    # Get API key from settings (llm.api_key) or environment
+    valid_key = settings.get("llm", {}).get("api_key") or os.environ.get("LABGEN_API_KEY", "dev-secret-key")
     return api_key == valid_key
 
 def get_api_key(api_key_header: Optional[str] = Security(api_key_header)):
@@ -204,7 +205,7 @@ async def websocket_endpoint(websocket: WebSocket, api_key: str = None):
                 msg = WSPayload(**msg_dict)
                 if msg.type == "generate":
                     report_id = msg.reportId or f"report_{uuid.uuid4().hex[:8]}"
-                    params = msg.payload.dict() if msg.payload else {}
+                    params = msg.payload.model_dump() if msg.payload else {}
                     asyncio.create_task(run_generation_with_progress(websocket, report_id, params))
                 elif msg.type == "intervention_response":
                     report_id = msg.reportId
